@@ -6,7 +6,7 @@ import {
   DRAW_PROTOCOL_VERSION, verifyDraw,
   type DrawResult, type DrawSnapshot, type VerificationReport,
 } from '../lib/draw/core'
-import { DRAND_CHAIN_QUICKNET, drandPublicUrl, fetchRound } from '../lib/draw/beacon'
+import { DRAND_CHAIN_QUICKNET, drandPublicUrl, fetchRoundCorroborated } from '../lib/draw/beacon'
 import { formatDateTime, pluralize } from '../lib/format'
 import { Badge, Button, Callout, Card, LoadingBlock, Spinner } from '../components/ui'
 import { BrandFooter, Wordmark } from '../components/brand'
@@ -60,6 +60,7 @@ export function VerifyPage() {
 
   const [report, setReport] = useState<VerificationReport | null>(null)
   const [beaconOk, setBeaconOk] = useState<boolean | null>(null)
+  const [beaconSources, setBeaconSources] = useState(0)
   const [verifying, setVerifying] = useState(false)
   const [showList, setShowList] = useState(false)
 
@@ -132,8 +133,10 @@ export function VerifyPage() {
       // value stored here. This is what catches a fabricated beacon.
       let beaconMatches: boolean | null = null
       try {
-        const live = await fetchRound(drawing.beacon_round ?? 0)
+        // Two independent mirrors must agree before this counts as confirmed.
+        const live = await fetchRoundCorroborated(drawing.beacon_round ?? 0)
         beaconMatches = live.randomness === drawing.beacon_randomness
+        setBeaconSources(live.sources.length)
       } catch {
         beaconMatches = null
       }
@@ -270,7 +273,7 @@ export function VerifyPage() {
                       </p>
                       <p className="text-xs text-ink-500">
                         {beaconOk === true
-                          ? `Round ${drawing.beacon_round} fetched directly from drand matches the value used here, so it was not fabricated.`
+                          ? `Round ${drawing.beacon_round} fetched directly from ${beaconSources > 1 ? `${beaconSources} independent drand mirrors` : 'drand'} matches the value used here, so it was not fabricated.`
                           : beaconOk === false
                             ? 'The stored beacon value does NOT match what drand publishes for that round.'
                             : 'Could not reach drand from your browser. Open the link below to check by hand.'}

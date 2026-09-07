@@ -27,6 +27,31 @@ function unwrap<T>(result: { data: T | null; error: { message: string } | null }
   return result.data
 }
 
+/**
+ * PostgREST caps every response at 1000 rows and gives no indication that it
+ * truncated. At this project's scale that is not theoretical: ~1000 members
+ * with several payments each, and up to four identity aliases per person, both
+ * blow straight past it. A silently short read here would mean people losing
+ * tickets from the frozen snapshot, so EVERY list that can exceed 1000 rows
+ * must page.
+ */
+const PAGE_SIZE = 1000
+
+async function fetchAllPages<T>(
+  context: string,
+  // Loosely typed on purpose: a narrowed `.select('a, b')` produces a row shape
+  // that does not structurally match the domain type, and the cast belongs here
+  // once rather than at every call site.
+  page: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>,
+): Promise<T[]> {
+  const rows: T[] = []
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const batch = unwrap(await page(from, from + PAGE_SIZE - 1), context) as T[]
+    rows.push(...batch)
+    if (batch.length < PAGE_SIZE) return rows
+  }
+}
+
 /* ---------------------------------------------------------------- drawings */
 
 export async function listDrawings(): Promise<Drawing[]> {
@@ -79,25 +104,15 @@ export async function publishDrawing(id: string): Promise<Drawing> {
 /* ---------------------------------------------------------------- payments */
 
 export async function listPayments(drawingId: string): Promise<Payment[]> {
-  const rows: Payment[] = []
-  const pageSize = 1000
-  // PostgREST caps a response at 1000 rows by default; a busy quarter can
-  // exceed that, so page explicitly rather than silently truncating the ledger.
-  for (let from = 0; ; from += pageSize) {
-    const page = unwrap(
-      await supabase
-        .from('payments')
-        .select('*')
-        .eq('drawing_id', drawingId)
-        .order('paid_on', { ascending: true, nullsFirst: false })
-        .order('created_at', { ascending: true })
-        .range(from, from + pageSize - 1),
-      'Loading payments',
-    ) as Payment[]
-    rows.push(...page)
-    if (page.length < pageSize) break
-  }
-  return rows
+  return fetchAllPages<Payment>('Loading payments', (from, to) =>
+    supabase
+      .from('payments')
+      .select('*')
+      .eq('drawing_id', drawingId)
+      .order('paid_on', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: true })
+      .range(from, to),
+  )
 }
 
 export async function insertPayments(rows: Array<Partial<Payment>>): Promise<Payment[]> {
@@ -138,33 +153,47 @@ export async function updatePaymentsBulk(ids: string[], patch: Partial<Payment>)
 }
 
 export async function existingDedupeHashes(drawingId: string): Promise<Set<string>> {
-  const hashes = new Set<string>()
-  const pageSize = 1000
-  for (let from = 0; ; from += pageSize) {
-    const page = unwrap(
-      await supabase.from('payments').select('dedupe_hash').eq('drawing_id', drawingId).range(from, from + pageSize - 1),
-      'Loading existing payment hashes',
-    ) as Array<{ dedupe_hash: string }>
-    for (const row of page) hashes.add(row.dedupe_hash)
-    if (page.length < pageSize) break
+  const rows = await fetchAllPages<{ dedupe_hash: string }>('Loading existing payment hashes', (from, to) =>
+    supabase.from('payments').select('dedupe_hash').eq('drawing_id', drawingId).range(from, to),
+  )
+  return new Set(rows.map((r) => r.dedupe_hash))
+}
+
+/**
+ * Highest `occurrence` already stored for each dedupe hash in this drawing.
+ *
+ * The unique key is (drawing_id, dedupe_hash, occurrence), so a third genuinely
+ * identical payment needs occurrence = 2. Assigning a flat 1 to every duplicate
+ * makes the whole import fail on the third one.
+ */
+export async function existingOccurrences(drawingId: string): Promise<Map<string, number>> {
+  const rows = await fetchAllPages<{ dedupe_hash: string; occurrence: number }>(
+    'Loading payment occurrences',
+    (from, to) =>
+      supabase.from('payments').select('dedupe_hash, occurrence').eq('drawing_id', drawingId).range(from, to),
+  )
+  const highest = new Map<string, number>()
+  for (const r of rows) {
+    const current = highest.get(r.dedupe_hash)
+    if (current === undefined || r.occurrence > current) highest.set(r.dedupe_hash, r.occurrence)
   }
-  return hashes
+  return highest
 }
 
 /* ---------------------------------------------------------------- entrants */
 
 export async function listEntrants(drawingId: string): Promise<Entrant[]> {
-  return unwrap(
-    await supabase.from('entrants').select('*').eq('drawing_id', drawingId).order('display_name'),
-    'Loading entrants',
-  ) as Entrant[]
+  return fetchAllPages<Entrant>('Loading entrants', (from, to) =>
+    supabase.from('entrants').select('*').eq('drawing_id', drawingId).order('display_name').range(from, to),
+  )
 }
 
 export async function listAliases(drawingId: string): Promise<EntrantAlias[]> {
-  return unwrap(
-    await supabase.from('entrant_aliases').select('*').eq('drawing_id', drawingId),
-    'Loading entrant aliases',
-  ) as EntrantAlias[]
+  // Up to four aliases per person (name, email, phone, handle), so a
+  // 1000-member quarter can hold several thousand rows.
+  return fetchAllPages<EntrantAlias>('Loading entrant aliases', (from, to) =>
+    supabase.from('entrant_aliases').select('*').eq('drawing_id', drawingId).order('id').range(from, to),
+  )
 }
 
 export async function createEntrant(input: {
@@ -203,24 +232,23 @@ export async function mergeEntrants(targetId: string, sourceId: string): Promise
 }
 
 export async function listTicketCounts(drawingId: string): Promise<EntrantTicketCount[]> {
-  return unwrap(
-    await supabase.from('entrant_ticket_counts').select('*').eq('drawing_id', drawingId),
-    'Loading ticket counts',
-  ) as EntrantTicketCount[]
+  return fetchAllPages<EntrantTicketCount>('Loading ticket counts', (from, to) =>
+    supabase.from('entrant_ticket_counts').select('*').eq('drawing_id', drawingId).order('entrant_id').range(from, to),
+  )
 }
 
 /* ------------------------------------------------------- merge suggestions */
 
 export async function listMergeSuggestions(drawingId: string): Promise<MergeSuggestion[]> {
-  return unwrap(
-    await supabase
+  return fetchAllPages<MergeSuggestion>('Loading merge suggestions', (from, to) =>
+    supabase
       .from('merge_suggestions')
       .select('*')
       .eq('drawing_id', drawingId)
       .eq('status', 'pending')
-      .order('score', { ascending: false }),
-    'Loading merge suggestions',
-  ) as MergeSuggestion[]
+      .order('score', { ascending: false })
+      .range(from, to),
+  )
 }
 
 export async function upsertMergeSuggestions(rows: Array<Partial<MergeSuggestion>>): Promise<void> {
@@ -261,16 +289,25 @@ export async function createBatch(input: Partial<ImportBatch>): Promise<ImportBa
   ) as ImportBatch
 }
 
-/** Undo an import: removes only the payments it created. */
-export async function revertBatch(batchId: string, drawingId: string): Promise<void> {
-  const { error: deleteError } = await supabase.from('payments').delete().eq('batch_id', batchId)
-  if (deleteError) throw new Error(`Reverting import: ${deleteError.message}`)
-  const { error } = await supabase
-    .from('import_batches')
-    .update({ status: 'reverted', reverted_at: new Date().toISOString() })
-    .eq('id', batchId)
-    .eq('drawing_id', drawingId)
+/**
+ * Undo an import.
+ *
+ * Runs as one database function so the cleanup is atomic: it removes the
+ * payments AND any entrants the import invented that now have no payments at
+ * all. Leaving those behind was a real bug — an alias owns an identity value,
+ * so a mis-mapped first import would permanently mis-route that person's later
+ * payments to the wrong entrant.
+ */
+export async function revertBatch(
+  batchId: string,
+  drawingId: string,
+): Promise<{ payments_removed: number; entrants_removed: number }> {
+  const { data, error } = await supabase.rpc('revert_import_batch', {
+    p_batch_id: batchId,
+    p_drawing_id: drawingId,
+  })
   if (error) throw new Error(`Reverting import: ${error.message}`)
+  return (data as { payments_removed: number; entrants_removed: number }) ?? { payments_removed: 0, entrants_removed: 0 }
 }
 
 /* ----------------------------------------------------------------- presets */
@@ -295,22 +332,14 @@ export async function savePreset(input: {
 /* ------------------------------------------------------- snapshot, results */
 
 export async function listSnapshotEntries(drawingId: string): Promise<SnapshotEntry[]> {
-  const rows: SnapshotEntry[] = []
-  const pageSize = 1000
-  for (let from = 0; ; from += pageSize) {
-    const page = unwrap(
-      await supabase
-        .from('draw_snapshot_entries')
-        .select('drawing_id, public_id, display_label, tickets')
-        .eq('drawing_id', drawingId)
-        .order('public_id')
-        .range(from, from + pageSize - 1),
-      'Loading frozen entrant list',
-    ) as SnapshotEntry[]
-    rows.push(...page)
-    if (page.length < pageSize) break
-  }
-  return rows
+  return fetchAllPages<SnapshotEntry>('Loading frozen entrant list', (from, to) =>
+    supabase
+      .from('draw_snapshot_entries')
+      .select('drawing_id, public_id, display_label, tickets')
+      .eq('drawing_id', drawingId)
+      .order('public_id')
+      .range(from, to),
+  )
 }
 
 export async function listDrawResults(drawingId: string): Promise<DrawResultRow[]> {

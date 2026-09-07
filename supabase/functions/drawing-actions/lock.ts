@@ -24,6 +24,7 @@ import {
   writeAudit,
 } from './auth.ts'
 import { chooseFutureRound } from './beacon.ts'
+import { fetchAllPages } from './paginate.ts'
 import {
   DRAW_PROTOCOL_VERSION,
   canonicalizeSnapshot,
@@ -69,33 +70,46 @@ export async function handleLock(req: Request): Promise<Response> {
     // ---- the review gate ---------------------------------------------------
     // "Let me verify the entire excel before pushing it" is the whole point of
     // this product, so locking is refused while anything is still unreviewed.
+    // Duplicates count as unreviewed. A row parked as `duplicate` earns no
+    // tickets, so if it is actually a genuine second payment and nobody looks at
+    // it, that person silently paid for nothing. Every row must end up either
+    // approved or excluded by a human decision.
     const { count: pendingCount, error: pendingError } = await admin
       .from('payments')
       .select('id', { count: 'exact', head: true })
       .eq('drawing_id', drawingId)
-      .eq('status', 'needs_review')
+      .in('status', ['needs_review', 'duplicate'])
 
     if (pendingError) throw new HttpError(500, pendingError.message)
     if ((pendingCount ?? 0) > 0) {
       throw new HttpError(
         409,
-        `${pendingCount} payment(s) still need review. Approve or exclude every row before locking.`,
+        `${pendingCount} payment(s) still need a decision (including any parked as duplicates). ` +
+          'Approve or exclude every row before locking.',
       )
     }
 
     // ---- build the frozen entrant list -------------------------------------
-    const { data: payments, error: paymentsError } = await admin
-      .from('payments')
-      .select('entrant_id, entries')
-      .eq('drawing_id', drawingId)
-      .eq('status', 'approved')
-      .eq('direction', 'in')
-
-    if (paymentsError) throw new HttpError(500, paymentsError.message)
+    // PostgREST caps every response at 1000 rows and does not say that it
+    // truncated. A 1000-member quarter has more payments than that, so reading
+    // this in one shot silently dropped people's tickets out of the frozen
+    // snapshot — the worst possible failure in this system. Page it.
+    const payments = await fetchAllPages<{ entrant_id: string | null; entries: number | null }>(
+      'payments',
+      (from, to) =>
+        admin
+          .from('payments')
+          .select('entrant_id, entries')
+          .eq('drawing_id', drawingId)
+          .eq('status', 'approved')
+          .eq('direction', 'in')
+          .order('id')
+          .range(from, to),
+    )
 
     const ticketsByEntrant = new Map<string, number>()
     let unassigned = 0
-    for (const p of payments ?? []) {
+    for (const p of payments) {
       if (!p.entrant_id) {
         if ((p.entries ?? 0) > 0) unassigned += 1
         continue
@@ -115,18 +129,28 @@ export async function handleLock(req: Request): Promise<Response> {
       throw new HttpError(409, 'No approved payments earn any tickets, so there is nobody to draw from.')
     }
 
-    const { data: entrants, error: entrantsError } = await admin
-      .from('entrants')
-      .select('id, public_id, display_label')
-      .eq('drawing_id', drawingId)
-      .in('id', entrantIds)
-
-    if (entrantsError) throw new HttpError(500, entrantsError.message)
-    if ((entrants?.length ?? 0) !== entrantIds.length) {
-      throw new HttpError(500, 'Entrant lookup returned an unexpected number of rows')
+    // Chunked as well as paged: a single .in() carrying a thousand UUIDs also
+    // runs into request-length limits.
+    const entrants: Array<{ id: string; public_id: string; display_label: string }> = []
+    for (let i = 0; i < entrantIds.length; i += 200) {
+      const chunk = entrantIds.slice(i, i + 200)
+      const { data, error } = await admin
+        .from('entrants')
+        .select('id, public_id, display_label')
+        .eq('drawing_id', drawingId)
+        .in('id', chunk)
+      if (error) throw new HttpError(500, error.message)
+      entrants.push(...((data ?? []) as Array<{ id: string; public_id: string; display_label: string }>))
     }
 
-    const snapshotEntrants: SnapshotEntrant[] = (entrants ?? []).map((e) => ({
+    if (entrants.length !== entrantIds.length) {
+      throw new HttpError(
+        500,
+        `Entrant lookup returned ${entrants.length} rows for ${entrantIds.length} entrants. Refusing to lock an incomplete list.`,
+      )
+    }
+
+    const snapshotEntrants: SnapshotEntrant[] = entrants.map((e) => ({
       publicId: e.public_id as string,
       displayLabel: e.display_label as string,
       tickets: ticketsByEntrant.get(e.id as string) ?? 0,
@@ -151,7 +175,7 @@ export async function handleLock(req: Request): Promise<Response> {
     const seedCommitment = await computeSeedCommitment(secretSeed)
     const beacon = await chooseFutureRound(leadSeconds)
 
-    const entrantRows = (entrants ?? []).map((e) => ({
+    const entrantRows = entrants.map((e) => ({
       drawing_id: drawingId,
       public_id: e.public_id,
       display_label: e.display_label,
@@ -159,8 +183,16 @@ export async function handleLock(req: Request): Promise<Response> {
       entrant_id: e.id,
     }))
 
-    const { error: snapshotInsertError } = await admin.from('draw_snapshot_entries').insert(entrantRows)
-    if (snapshotInsertError) throw new HttpError(500, `Failed to write snapshot: ${snapshotInsertError.message}`)
+    // Chunked: a single insert of a thousand-plus rows exceeds the request body
+    // limit. On any failure the partial snapshot is removed so a half-written
+    // entrant list can never be locked.
+    for (let i = 0; i < entrantRows.length; i += 500) {
+      const { error } = await admin.from('draw_snapshot_entries').insert(entrantRows.slice(i, i + 500))
+      if (error) {
+        await admin.from('draw_snapshot_entries').delete().eq('drawing_id', drawingId)
+        throw new HttpError(500, `Failed to write snapshot: ${error.message}`)
+      }
+    }
 
     const { error: secretError } = await admin
       .from('drawing_secrets')

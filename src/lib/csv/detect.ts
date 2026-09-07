@@ -361,8 +361,12 @@ export interface DetectionResult {
 export function detectLayout(grid: Grid): DetectionResult {
   const headerRowIndex = detectHeaderRow(grid)
   const headers = (grid[headerRowIndex] ?? []).map((h) => h.trim())
-  const dataRows = grid.slice(headerRowIndex + 1).filter((r) => r.some((c) => c.trim() !== ''))
-  const sample = dataRows.slice(0, 60)
+  // Everything below the header, blank lines included. They are noise for
+  // column scoring (filtered out of `sample` below) but they still occupy a
+  // line in the file, and normalizeRows counts them so the row numbers it
+  // reports match what the operator sees in their spreadsheet.
+  const dataRows = grid.slice(headerRowIndex + 1)
+  const sample = dataRows.filter((r) => r.some((c) => c.trim() !== '')).slice(0, 60)
 
   const roles = assignRoles(headers, sample)
   const source = guessSource(headers, grid)
@@ -373,7 +377,7 @@ export function detectLayout(grid: Grid): DetectionResult {
   if (roles.amount !== undefined || (roles.credit !== undefined || roles.debit !== undefined)) confidence += 0.25
   if (roles.payer_name !== undefined || roles.description !== undefined) confidence += 0.15
   if (roles.external_ref !== undefined) confidence += 0.05
-  if (dataRows.length === 0) confidence = 0
+  if (sample.length === 0) confidence = 0
 
   return {
     mapping: {

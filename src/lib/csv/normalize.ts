@@ -211,7 +211,11 @@ export async function normalizeRows(
 
   for (let i = 0; i < dataRows.length; i++) {
     const row = dataRows[i]!
-    const sourceRowNumber = mapping.headerRowIndex + 2 + i // 1-based, as a spreadsheet shows it
+    // 1-based, as a spreadsheet shows it. `dataRows` mirrors the file below the
+    // header, blank lines included, so the index alone is the true line number.
+    // (Counting non-blank rows instead pointed the operator at the wrong line
+    // for everything below the first gap.)
+    const sourceRowNumber = mapping.headerRowIndex + 2 + i
 
     const rawRow: Record<string, string> = {}
     for (let c = 0; c < headers.length; c++) {

@@ -9,8 +9,8 @@ import { markDuplicates, normalizeRows } from '../lib/csv/normalize'
 import { buildAliases, normalizeName, toDisplayLabel } from '../lib/csv/identity'
 import { sha256Hex } from '../lib/draw/core'
 import {
-  createBatch, createEntrant, existingDedupeHashes, insertAliases, insertPayments,
-  listAliases, listEntrants, writeAudit,
+  createBatch, createEntrant, existingDedupeHashes, existingOccurrences, insertAliases,
+  insertPayments, listAliases, listEntrants, writeAudit,
 } from '../lib/db'
 import { formatCents, pluralize } from '../lib/format'
 import type { EntrantAlias } from '../lib/types'
@@ -129,12 +129,30 @@ export function ImportTab() {
       // Resolve each payment to an entrant. Existing aliases decide it; a payer
       // we have never seen creates a new entrant. Only EXACT normalised matches
       // auto-merge — anything fuzzier becomes a suggestion on the Entrants tab.
-      const [entrants, aliases] = await Promise.all([listEntrants(drawing.id), listAliases(drawing.id)])
+      const [entrants, aliases, occurrences] = await Promise.all([
+        listEntrants(drawing.id),
+        listAliases(drawing.id),
+        // Highest occurrence already stored per dedupe hash. The unique key is
+        // (drawing_id, dedupe_hash, occurrence), so duplicates have to count
+        // upward — a flat 1 makes the THIRD identical payment collide and take
+        // the whole import down with it.
+        existingOccurrences(drawing.id),
+      ])
+      const nextOccurrence = new Map(occurrences)
       const aliasIndex = new Map(aliases.map((a) => [`${a.kind}:${a.value_norm}`, a.entrant_id]))
       const entrantByName = new Map(entrants.map((e) => [normalizeName(e.display_name), e.id]))
 
       let entrantsCreated = 0
       const newAliases: Array<Partial<EntrantAlias>> = []
+
+      // Allocates the next free occurrence for a hash, remembering what it
+      // handed out so several identical rows in ONE file also count upward.
+      const occurrence = (hash: string): number => {
+        const previous = nextOccurrence.get(hash)
+        const next = previous === undefined ? 0 : previous + 1
+        nextOccurrence.set(hash, next)
+        return next
+      }
 
       const paymentRows = []
       for (const row of preview.rows) {
@@ -202,7 +220,7 @@ export function ImportTab() {
           status: row.flags.includes('duplicate_suspected') ? 'duplicate' : 'needs_review',
           flags: row.flags,
           dedupe_hash: row.dedupeHash,
-          occurrence: row.flags.includes('duplicate_suspected') ? 1 : 0,
+          occurrence: occurrence(row.dedupeHash),
         })
       }
 

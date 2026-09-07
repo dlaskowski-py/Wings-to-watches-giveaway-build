@@ -170,10 +170,17 @@ export function OverviewTab() {
                     variant="ghost"
                     onClick={async () => {
                       if (!confirm(`Remove all payments imported from ${b.file_name}? This cannot be undone.`)) return
-                      await revertBatch(b.id, drawing.id)
-                      await writeAudit(drawing.id, 'import.reverted', { file_name: b.file_name, batch_id: b.id })
+                      // The RPC also removes entrants this import invented that
+                      // have no payments left, and writes its own audit entry.
+                      const result = await revertBatch(b.id, drawing.id)
                       setBatches(await listBatches(drawing.id))
                       await reload()
+                      alert(
+                        `Removed ${result.payments_removed} payment(s)` +
+                          (result.entrants_removed > 0
+                            ? ` and ${result.entrants_removed} entrant(s) that had no other payments.`
+                            : '.'),
+                      )
                     }}
                   >
                     Revert

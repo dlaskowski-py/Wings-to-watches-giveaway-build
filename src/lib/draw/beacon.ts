@@ -129,24 +129,77 @@ export async function chooseFutureRound(leadSeconds = 3600): Promise<{ info: Dra
 }
 
 /** Fetch one round. Throws while the round is still in the future. */
-export async function fetchRound(round: number): Promise<BeaconValue> {
-  if (!Number.isInteger(round) || round <= 0) throw new Error(`Invalid drand round: ${String(round)}`)
-
-  const raw = asRecord(
-    await fetchFromAnyEndpoint(`/${DRAND_CHAIN_QUICKNET}/public/${round}`),
-    `drand round ${round}`,
-  )
-  const randomness = raw.randomness
-  const returnedRound = raw.round
-
+function readRound(raw: unknown, round: number, source: string): string {
+  const rec = asRecord(raw, `drand round ${round} from ${source}`)
+  const randomness = rec.randomness
   if (typeof randomness !== 'string' || !/^[0-9a-f]+$/i.test(randomness)) {
-    throw new Error(`drand round ${round}: randomness is missing or not hex`)
+    throw new Error(`drand round ${round} from ${source}: randomness is missing or not hex`)
   }
-  if (returnedRound !== round) {
-    throw new Error(`drand returned round ${String(returnedRound)} when ${round} was requested`)
+  if (rec.round !== round) {
+    throw new Error(`${source} returned round ${String(rec.round)} when ${round} was requested`)
+  }
+  return randomness.toLowerCase()
+}
+
+/**
+ * Fetch a round and CORROBORATE it against a second, independent mirror.
+ *
+ * We do not verify drand's BLS threshold signature here — doing that properly
+ * in the browser would mean shipping a pairing library. What we can cheaply do
+ * is refuse to trust a single endpoint: requiring two independently operated
+ * mirrors to return the same value means a compromised or hijacked mirror
+ * cannot slip a fabricated beacon into a draw on its own.
+ *
+ * If no second mirror answers, the value is returned anyway rather than failing
+ * the draw — but the caller is told, via `corroborated`, so it can say so. A
+ * verifier can always check the round by hand at the URL shown on the page.
+ */
+export interface FetchedRound extends BeaconValue {
+  /** True when at least two independent mirrors returned the same randomness. */
+  corroborated: boolean
+  sources: string[]
+}
+
+export async function fetchRoundCorroborated(round: number): Promise<FetchedRound> {
+  if (!Number.isInteger(round) || round <= 0) throw new Error(`Invalid drand round: ${String(round)}`)
+  const path = `/${DRAND_CHAIN_QUICKNET}/public/${round}`
+
+  const answers: Array<{ source: string; randomness: string }> = []
+  const errors: string[] = []
+
+  for (const base of DRAND_ENDPOINTS) {
+    try {
+      answers.push({ source: base, randomness: readRound(await fetchJson(`${base}${path}`), round, base) })
+    } catch (err) {
+      errors.push(`${base}: ${err instanceof Error ? err.message : String(err)}`)
+    }
+    if (answers.length >= 2) break
   }
 
-  return { chain: DRAND_CHAIN_QUICKNET, round, randomness: randomness.toLowerCase() }
+  if (answers.length === 0) {
+    throw new Error(`Could not fetch drand round ${round}.\n${errors.join('\n')}`)
+  }
+
+  const [first, second] = answers
+  if (second && second.randomness !== first!.randomness) {
+    throw new Error(
+      `drand mirrors disagree on round ${round}: ${first!.source} returned ${first!.randomness} ` +
+        `but ${second.source} returned ${second.randomness}. Refusing to use this beacon.`,
+    )
+  }
+
+  return {
+    chain: DRAND_CHAIN_QUICKNET,
+    round,
+    randomness: first!.randomness,
+    corroborated: answers.length >= 2,
+    sources: answers.map((a) => a.source),
+  }
+}
+
+export async function fetchRound(round: number): Promise<BeaconValue> {
+  const { chain, randomness } = await fetchRoundCorroborated(round)
+  return { chain, round, randomness }
 }
 
 /** Latest available round — used to tell the operator how long until their committed round lands. */

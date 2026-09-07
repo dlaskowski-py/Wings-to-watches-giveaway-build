@@ -690,3 +690,60 @@ describe('sanitizeForSpreadsheet', () => {
     expect(looksLikeFormula('-25 refund')).toBe(false)
   })
 })
+
+/* -------------------------------------------------------------------------- *
+ * Regressions found by an adversarial review
+ * -------------------------------------------------------------------------- */
+
+describe('regressions', () => {
+  it('reports the row number a spreadsheet shows, even below blank lines', async () => {
+    // Blank rows are skipped for parsing but still occupy a line in the file.
+    // Counting only non-blank rows pointed the operator at the wrong line for
+    // everything below the first gap.
+    const csv = [
+      'Date,From,Amount',       // line 1 - header
+      '2026-07-02,Alpha A,25',  // line 2
+      '',                       // line 3 - blank
+      '2026-07-03,Bravo B,25',  // line 4
+      '',                       // line 5 - blank
+      '2026-07-04,Charlie C,25' // line 6
+    ].join('\n')
+    const { mapping, headers, dataRows } = detectLayout(grid(csv))
+    const preview = await normalizeRows(headers, dataRows, { mapping, ticketPriceCents: TICKET })
+
+    expect(preview.rows.map((r) => [r.rawPayerName, r.sourceRowNumber])).toEqual([
+      ['Alpha A', 2],
+      ['Bravo B', 4],
+      ['Charlie C', 6],
+    ])
+  })
+
+  it('gives every copy of a repeated payment a distinct dedupe identity slot', async () => {
+    // Three genuinely identical rows share one dedupe hash. The storage key is
+    // (drawing, hash, occurrence), so assigning a flat occurrence of 1 to every
+    // duplicate made the THIRD one collide and fail the whole import.
+    const csv = [
+      'Date,From,Amount,Note',
+      '2026-07-15,Repeat Payer,25.00,raffle',
+      '2026-07-15,Repeat Payer,25.00,raffle',
+      '2026-07-15,Repeat Payer,25.00,raffle',
+    ].join('\n')
+    const { mapping, headers, dataRows } = detectLayout(grid(csv))
+    const preview = await normalizeRows(headers, dataRows, { mapping, ticketPriceCents: TICKET })
+    const marked = markDuplicates(preview.rows, new Set())
+
+    expect(marked.duplicateCount).toBe(2)
+    expect(new Set(marked.rows.map((r) => r.dedupeHash)).size).toBe(1)
+
+    // The allocator the importer uses: first free slot per hash, counting up.
+    const highest = new Map<string, number>()
+    const slots = marked.rows.map((r) => {
+      const previous = highest.get(r.dedupeHash)
+      const next = previous === undefined ? 0 : previous + 1
+      highest.set(r.dedupeHash, next)
+      return next
+    })
+    expect(slots).toEqual([0, 1, 2])
+    expect(new Set(slots).size).toBe(3)
+  })
+})

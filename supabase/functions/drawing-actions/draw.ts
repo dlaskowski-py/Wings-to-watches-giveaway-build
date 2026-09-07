@@ -24,6 +24,7 @@ import {
   writeAudit,
 } from './auth.ts'
 import { fetchRound } from './beacon.ts'
+import { fetchAllPages } from './paginate.ts'
 import {
   DRAW_PROTOCOL_VERSION,
   executeDraw,
@@ -87,13 +88,20 @@ export async function handleDraw(req: Request): Promise<Response> {
     }
 
     // ---- rebuild the frozen snapshot --------------------------------------
-    const { data: snapshotRows, error: snapshotError } = await admin
-      .from('draw_snapshot_entries')
-      .select('public_id, display_label, tickets')
-      .eq('drawing_id', drawingId)
+    // Paged: past 1000 entrants an unpaged read would silently return a partial
+    // list, which would hash differently and abort the draw.
+    const snapshotRows = await fetchAllPages<{ public_id: string; display_label: string; tickets: number }>(
+      'snapshot entries',
+      (from, to) =>
+        admin
+          .from('draw_snapshot_entries')
+          .select('public_id, display_label, tickets')
+          .eq('drawing_id', drawingId)
+          .order('public_id')
+          .range(from, to),
+    )
 
-    if (snapshotError) throw new HttpError(500, snapshotError.message)
-    if (!snapshotRows || snapshotRows.length === 0) {
+    if (snapshotRows.length === 0) {
       throw new HttpError(500, 'The frozen entrant list is missing for this drawing')
     }
 
