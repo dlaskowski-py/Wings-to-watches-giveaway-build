@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Dices, ExternalLink, FileText, Lock, LockOpen, Share2, Trophy } from 'lucide-react'
+import { Dices, ExternalLink, FileText, Lock, LockOpen, PlayCircle, Share2, Trophy } from 'lucide-react'
 import { useDrawing } from './DrawingLayout'
 import { listDrawResults, listSnapshotEntries, publishDrawing, setResultStatus, unlockDrawing, writeAudit } from '../lib/db'
 import { callDrawingAction } from '../lib/supabase'
@@ -7,6 +7,7 @@ import type { DrawResultRow, SnapshotEntry } from '../lib/types'
 import { formatCountdown, formatDateTime, pluralize } from '../lib/format'
 import { exportVerificationRecord } from '../lib/export'
 import { drandPublicUrl } from '../lib/draw/beacon'
+import { DrawWheel, type WheelResult } from '../components/DrawWheel'
 import {
   Badge, Button, Callout, Card, EmptyState, Field, HashValue, Input, LoadingBlock, Stat,
 } from '../components/ui'
@@ -21,6 +22,7 @@ export function DrawTab() {
   const [confirmName, setConfirmName] = useState('')
   const [leadMinutes, setLeadMinutes] = useState('60')
   const [now, setNow] = useState(() => Date.now())
+  const [showWheel, setShowWheel] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -71,9 +73,13 @@ export function DrawTab() {
     setBusy(true)
     setError(null)
     try {
+      // The draw is executed and recorded FIRST. Only then does the reveal
+      // open — so a failed draw can never produce a spinning wheel in front of
+      // a live audience, and the wheel always shows the recorded result.
       await callDrawingAction('draw', { drawingId: drawing.id })
       await load()
       await reload()
+      setShowWheel(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -251,6 +257,10 @@ export function DrawTab() {
               <Dices className="size-4" aria-hidden />
               Draw the winners
             </Button>
+            <p className="text-xs text-ink-500">
+              The winners are computed and recorded first, then revealed on a full-screen wheel — one spin per
+              winner, then the alternates. Good to share on a stream. You can replay it afterwards.
+            </p>
           </div>
         </Card>
 
@@ -291,13 +301,40 @@ export function DrawTab() {
   const winners = results.filter((r) => !r.is_alternate)
   const alternates = results.filter((r) => r.is_alternate)
 
+  const wheelEntrants = snapshot.map((e) => ({
+    publicId: e.public_id,
+    label: e.display_label,
+    tickets: e.tickets,
+  }))
+  const wheelResults: WheelResult[] = results.map((r) => ({
+    rank: r.rank,
+    publicId: r.public_id,
+    displayLabel: r.display_label,
+    tickets: r.tickets,
+    isAlternate: r.is_alternate,
+  }))
+
   return (
     <div className="space-y-6">
+      {showWheel && wheelResults.length > 0 && (
+        <DrawWheel
+          entrants={wheelEntrants}
+          results={wheelResults}
+          drawingName={drawing.name}
+          beaconRound={drawing.beacon_round}
+          onClose={() => setShowWheel(false)}
+        />
+      )}
+
       <Card
         title="Winners"
         description={`Drawn ${formatDateTime(drawing.drawn_at)} from ${pluralize(snapshot.length, 'entrant')} holding ${pluralize(snapshot.reduce((s, e) => s + e.tickets, 0), 'ticket')}.`}
         actions={
           <div className="flex gap-2">
+            <Button size="sm" variant="primary" onClick={() => setShowWheel(true)}>
+              <PlayCircle className="size-3.5" aria-hidden />
+              Play the reveal
+            </Button>
             <Button size="sm" onClick={() => exportVerificationRecord(drawing, snapshot, results)}>
               <FileText className="size-3.5" aria-hidden />
               Verification record

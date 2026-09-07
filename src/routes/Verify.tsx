@@ -7,7 +7,7 @@ import {
   type DrawResult, type DrawSnapshot, type VerificationReport,
 } from '../lib/draw/core'
 import { DRAND_CHAIN_QUICKNET, drandPublicUrl, fetchRoundCorroborated } from '../lib/draw/beacon'
-import { formatDateTime, pluralize } from '../lib/format'
+import { formatDateTime, formatOdds, pluralize } from '../lib/format'
 import { Badge, Button, Callout, Card, LoadingBlock, Spinner } from '../components/ui'
 import { BrandFooter, Wordmark } from '../components/brand'
 
@@ -183,7 +183,7 @@ export function VerifyPage() {
                 <p className="text-sm font-semibold text-emerald-900">#{w.rank} — {w.display_label}</p>
                 <p className="text-xs text-emerald-700">
                   held {pluralize(w.tickets, 'ticket')} of {totalTickets.toLocaleString()}
-                  {' '}({((w.tickets / Math.max(1, totalTickets)) * 100).toFixed(1)}% chance)
+                  {' '}({formatOdds(w.tickets, totalTickets)})
                   {w.status && w.status !== 'active' ? ` · ${w.status}` : ''}
                 </p>
               </li>

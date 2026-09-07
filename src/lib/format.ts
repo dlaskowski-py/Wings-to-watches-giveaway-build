@@ -63,3 +63,18 @@ export function shortHash(hash: string | null | undefined, chars = 8): string {
   if (hash.length <= chars * 2 + 1) return hash
   return `${hash.slice(0, chars)}…${hash.slice(-chars)}`
 }
+
+/**
+ * Odds, phrased for an audience.
+ *
+ * A percentage collapses to a useless "0.0%" once the pool is large — one
+ * ticket in 3,000 is 0.033% — which reads like a broken number on a stream.
+ * Below one percent, "about 1 in 3,000" says the same thing and lands.
+ */
+export function formatOdds(tickets: number, totalTickets: number): string {
+  if (totalTickets <= 0 || tickets <= 0) return 'no chance'
+  const pct = (tickets / totalTickets) * 100
+  if (pct >= 100) return 'a certainty'
+  if (pct >= 1) return `a ${pct.toFixed(1)}% chance`
+  return `about a 1 in ${Math.round(totalTickets / tickets).toLocaleString()} chance`
+}
