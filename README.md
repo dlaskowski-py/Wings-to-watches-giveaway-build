@@ -9,6 +9,33 @@ verify for themselves afterwards.
 
 ---
 
+## ⚠️ One setup step before your first sign-in
+
+Sign-in is a magic link, and Supabase will only send you back to a URL on its
+allowlist. A new project's default is `http://localhost:3000`, so **until you
+change this, clicking the link in your email will take you to a dead page.**
+
+In the [Supabase dashboard](https://supabase.com/dashboard/project/eutanvevhbyntjkdpueu/auth/url-configuration)
+→ **Authentication → URL Configuration**:
+
+- **Site URL:** `https://wings-to-watches-giveaway.netlify.app`
+- **Redirect URLs:** add `https://wings-to-watches-giveaway.netlify.app/**`
+  (and `http://localhost:5173/**` if you want to run it locally)
+
+Then open the console and sign in with `laskowskidanny@gmail.com` — it is
+already on the operator allowlist.
+
+Two things worth knowing about email:
+
+- Supabase's built-in email sender is rate-limited to a handful of messages per
+  hour. That is fine for one operator signing in occasionally. If you start
+  hitting the limit, connect your own SMTP under **Authentication → Emails**.
+- Anyone can create an account against the project, but without a row in
+  `admin_emails` they can read nothing at all — that is enforced by the
+  database, not just hidden in the interface.
+
+---
+
 ## How a quarter works
 
 1. **Create the drawing.** Name, price per entry ($25), how many winners, how

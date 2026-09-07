@@ -33,10 +33,19 @@ export function SignInPage() {
         </div>
 
         {sent ? (
-          <Callout tone="good" title="Check your email">
-            We sent a sign-in link to <span className="font-medium">{email}</span>. Open it on this device to
-            continue. The link is single-use and expires shortly.
-          </Callout>
+          <div className="space-y-3">
+            <Callout tone="good" title="Check your email">
+              We sent a sign-in link to <span className="font-medium">{email}</span>. Open it on this device to
+              continue. The link is single-use and expires shortly.
+            </Callout>
+            <Callout tone="info" title="Link took you somewhere unexpected?">
+              Supabase only redirects to URLs on its allowlist. In the Supabase dashboard under
+              <span className="font-medium"> Authentication &rarr; URL Configuration</span>, set the Site URL to{' '}
+              <span className="hash">{window.location.origin}</span> and add{' '}
+              <span className="hash">{window.location.origin}/**</span> to the Redirect URLs. This only needs
+              doing once.
+            </Callout>
+          </div>
         ) : (
           <form onSubmit={submit} className="space-y-4 rounded-xl bg-white p-6 shadow-sm ring-1 ring-ink-200/70">
             <Field
