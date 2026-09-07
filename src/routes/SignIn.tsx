@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { Mail } from 'lucide-react'
+import { KeyRound } from 'lucide-react'
 import { useAuth } from '../lib/auth'
-import { Button, Callout, Field, Input } from '../components/ui'
+import { Button, Field, Input } from '../components/ui'
+import { Wordmark } from '../components/brand'
 
 export function SignInPage() {
-  const { signInWithEmail } = useAuth()
-  const [email, setEmail] = useState('')
-  const [sent, setSent] = useState(false)
+  const { signInWithPasscode } = useAuth()
+  const [passcode, setPasscode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -15,69 +15,62 @@ export function SignInPage() {
     setBusy(true)
     setError(null)
     try {
-      await signInWithEmail(email.trim())
-      setSent(true)
+      await signInWithPasscode(passcode.trim())
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
-    } finally {
       setBusy(false)
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-6 py-12">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <h1 className="text-xl font-semibold text-ink-900">Wings to Watches</h1>
-          <p className="mt-1 text-sm text-ink-500">Giveaway console</p>
-        </div>
-
-        {sent ? (
-          <div className="space-y-3">
-            <Callout tone="good" title="Check your email">
-              We sent a sign-in link to <span className="font-medium">{email}</span>. Open it on this device to
-              continue. The link is single-use and expires shortly.
-            </Callout>
-            <Callout tone="info" title="Link took you somewhere unexpected?">
-              Supabase only redirects to URLs on its allowlist. In the Supabase dashboard under
-              <span className="font-medium"> Authentication &rarr; URL Configuration</span>, set the Site URL to{' '}
-              <span className="hash">{window.location.origin}</span> and add{' '}
-              <span className="hash">{window.location.origin}/**</span> to the Redirect URLs. This only needs
-              doing once.
-            </Callout>
+    <div className="flex min-h-screen flex-col">
+      <div className="flex flex-1 items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm">
+          <div className="mb-8 text-center">
+            <h1 className="text-xl font-semibold text-ink-900">Wings to Watches</h1>
+            <p className="mt-1 text-sm text-ink-500">Giveaway console</p>
           </div>
-        ) : (
+
           <form onSubmit={submit} className="space-y-4 rounded-xl bg-white p-6 shadow-sm ring-1 ring-ink-200/70">
-            <Field
-              label="Email address"
-              htmlFor="email"
-              hint="You'll get a one-time sign-in link. No password to remember."
-            >
+            <Field label="Passcode" htmlFor="passcode" hint="Ask whoever set this up if you don't have it.">
               <Input
-                id="email"
-                type="email"
+                id="passcode"
+                type="password"
                 required
-                autoComplete="email"
                 autoFocus
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                autoComplete="current-password"
+                value={passcode}
+                onChange={(e) => setPasscode(e.target.value)}
+                placeholder="••••••••••••"
               />
             </Field>
 
             {error && <p className="text-xs font-medium text-red-600">{error}</p>}
 
-            <Button type="submit" variant="primary" loading={busy} className="w-full">
-              <Mail className="size-4" aria-hidden />
-              Email me a sign-in link
+            <Button type="submit" variant="primary" loading={busy} className="w-full" disabled={!passcode.trim()}>
+              <KeyRound className="size-4" aria-hidden />
+              Open the console
             </Button>
-
-            <p className="text-center text-xs text-ink-400">
-              Only addresses on the operator allowlist can open the console.
-            </p>
           </form>
-        )}
+
+          <p className="mt-4 text-center text-xs text-ink-400">
+            The passcode unlocks real member data — names, contact details and payment amounts.
+            Treat it like the key to the account.
+          </p>
+        </div>
       </div>
+
+      <BrandFooterSlim />
     </div>
+  )
+}
+
+function BrandFooterSlim() {
+  return (
+    <footer className="bg-[#0a0a0b] px-6 py-5">
+      <div className="mx-auto flex max-w-sm items-center justify-center">
+        <Wordmark tone="dark" size="sm" />
+      </div>
+    </footer>
   )
 }

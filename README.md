@@ -9,32 +9,39 @@ verify for themselves afterwards.
 
 ---
 
-## ⚠️ One setup step before your first sign-in
+## Signing in
 
-Sign-in is a magic link, and Supabase will only send you back to a URL on its
-allowlist. A new project's default is `http://localhost:3000`, so **until you
-change this, clicking the link in your email will take you to a dead page.**
+One shared passcode. No email, no magic link, no account to set up:
 
-In the [Supabase dashboard](https://supabase.com/dashboard/project/eutanvevhbyntjkdpueu/auth/url-configuration)
-→ **Authentication → URL Configuration**:
+> **Passcode:** `beacon-harbor-zephyr-6337`
 
-- **Site URL:** `https://wings-to-watches-giveaway.netlify.app`
-- **Redirect URLs:** add `https://wings-to-watches-giveaway.netlify.app/**`
-  (and `http://localhost:5173/**` if you want to run it locally)
+**Change it now that you have it**, in the Supabase dashboard →
+[Authentication → Users](https://supabase.com/dashboard/project/eutanvevhbyntjkdpueu/auth/users)
+→ `console@wings-to-watches.app` → **Reset password**. It takes effect
+immediately.
 
-Then open the console and sign in with `laskowskidanny@gmail.com` — it is
-already on the operator allowlist.
+### How it actually works, and why it is not just a browser check
 
-Two things worth knowing about email:
+The passcode is **not** validated in the browser. It could not be: the
+publishable Supabase key ships inside the JavaScript bundle, so anyone could
+skip the interface entirely and query the API directly for every member's name,
+email, phone number and payment amount. A passcode the frontend checks by itself
+would be decoration.
 
-- Supabase's built-in email sender is rate-limited to a handful of messages per
-  hour. That is fine for one operator signing in occasionally. If you start
-  hitting the limit, connect your own SMTP under **Authentication → Emails**.
-- Anyone can create an account against the project, but without a row in
-  `admin_emails` they can read nothing at all — that is enforced by the
-  database, not just hidden in the interface.
+Instead the passcode is the *password* of one fixed Supabase account
+(`console@wings-to-watches.app` — a fixed identifier, not a secret, and nothing
+is ever emailed to it). Signing in exchanges the passcode for a real token, and
+Row Level Security does the enforcement in the database. Knowing the publishable
+key gets an attacker nothing without the passcode, and Supabase rate-limits
+guesses.
+
+Because everyone shares one passcode, the audit log records actions as "the
+console" rather than naming a person. If you later want each helper attributed
+individually, that is a small change — say the word.
 
 ---
+
+## How a quarter works---
 
 ## How a quarter works
 
@@ -126,15 +133,13 @@ npm run dev
 
 ### Giving someone access
 
-Access is controlled in the database, not the UI. Add a row to `admin_emails`
-in the Supabase SQL editor:
+Share the passcode. To revoke it, change the password on
+`console@wings-to-watches.app` in the Supabase dashboard — everyone is signed
+out at their next token refresh.
 
-```sql
-insert into public.admin_emails (email, role) values ('someone@example.com', 'operator');
-```
-
-Anyone can create an account against the project; without a row here they can
-read nothing. Use `'viewer'` for read-only.
+Access is ultimately controlled by the `admin_emails` table, not the interface.
+The console account has a row there; an account without one can read nothing at
+all, whatever the interface shows.
 
 ### Deploying
 

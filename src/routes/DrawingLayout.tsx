@@ -6,6 +6,7 @@ import { getDrawing, getReconciliation } from '../lib/db'
 import { DRAWING_STATUS_META, type Drawing, type Reconciliation } from '../lib/types'
 import { useAuth } from '../lib/auth'
 import { Badge, ErrorBlock, LoadingBlock } from '../components/ui'
+import { BrandFooter, Wordmark } from '../components/brand'
 import { formatCents } from '../lib/format'
 
 /* -------------------------------------------------------------------------- *
@@ -13,16 +14,19 @@ import { formatCents } from '../lib/format'
  * -------------------------------------------------------------------------- */
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { email, signOut } = useAuth()
+  const { signOut } = useAuth()
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-screen flex-col">
       <header className="border-b border-ink-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-3">
           <Link to="/" className="text-sm font-semibold text-ink-900">
             Wings to Watches <span className="font-normal text-ink-400">giveaway console</span>
           </Link>
-          <div className="flex items-center gap-3">
-            {email && <span className="hidden text-xs text-ink-500 sm:inline">{email}</span>}
+          <div className="flex items-center gap-4">
+            {/* On a pale header the mark uses the ink/Signal-deep pairing the
+                brand kit specifies for light grounds; the bone-and-copper
+                version lives in the dark footer strip. */}
+            <Wordmark size="sm" className="hidden sm:inline" />
             <button
               onClick={() => void signOut()}
               className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-ink-500 hover:bg-ink-100 hover:text-ink-900"
@@ -33,7 +37,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
+      <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-8">{children}</main>
+      <BrandFooter className="mt-16" />
     </div>
   )
 }
