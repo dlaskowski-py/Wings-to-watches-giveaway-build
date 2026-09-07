@@ -4,7 +4,7 @@ import { Plus } from 'lucide-react'
 import { listDrawings } from '../lib/db'
 import { DRAWING_STATUS_META, type Drawing } from '../lib/types'
 import { formatCents, formatDate, formatRelative } from '../lib/format'
-import { Badge, Button, EmptyState, ErrorBlock, LoadingBlock } from '../components/ui'
+import { Badge, EmptyState, ErrorBlock, LinkButton, LoadingBlock } from '../components/ui'
 import { AppShell } from './DrawingLayout'
 
 export function DrawingsPage() {
@@ -22,12 +22,10 @@ export function DrawingsPage() {
           <h1 className="text-lg font-semibold text-ink-900">Drawings</h1>
           <p className="mt-0.5 text-sm text-ink-500">One per quarter. Import payments, verify them, then draw.</p>
         </div>
-        <Button variant="primary" asChild={false}>
-          <Link to="/new" className="contents">
-            <Plus className="size-4" aria-hidden />
-            New drawing
-          </Link>
-        </Button>
+        <LinkButton to="/new" variant="primary">
+          <Plus className="size-4" aria-hidden />
+          New drawing
+        </LinkButton>
       </div>
 
       {error ? (
@@ -38,13 +36,10 @@ export function DrawingsPage() {
         <EmptyState
           title="No drawings yet"
           action={
-            <Link
-              to="/new"
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-700"
-            >
+            <LinkButton to="/new" variant="primary">
               <Plus className="size-4" aria-hidden />
               Create your first drawing
-            </Link>
+            </LinkButton>
           }
         >
           A drawing holds one quarter’s payments, the frozen entrant list, and the result.

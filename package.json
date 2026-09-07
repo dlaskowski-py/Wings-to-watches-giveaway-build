@@ -5,9 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "node scripts/sync-draw-core.mjs --check && tsc -b && vite build && ./scripts/check-bundle.sh",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -b --force",
+    "sync:draw-core": "node scripts/sync-draw-core.mjs",
+    "check:bundle": "./scripts/check-bundle.sh",
+    "check:rls": "./scripts/probe-rls.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.115.0",

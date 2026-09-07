@@ -125,15 +125,15 @@ export interface ExtractedPayer {
 
 const DESCRIPTION_PATTERNS: Array<{ id: string; re: RegExp; direction: 'from' | 'to' | null }> = [
   // "ORIG CO NAME:ZELLE ... IND NAME:JOHN SMITH" (NACHA descriptor)
-  { id: 'nacha_ind_name', re: /IND\s*NAME\s*:\s*([A-Za-z][A-Za-z'.\- ]{1,60})/i, direction: 'from' },
+  { id: 'nacha_ind_name', re: /IND\s*NAME\s*:\s*([A-Za-z][A-Za-z'. -]{1,60})/i, direction: 'from' },
   // "Zelle payment from JOHN SMITH 22001234567" / "ZELLE FROM JOHN SMITH ON 09/05"
-  { id: 'zelle_from', re: /ZELLE[^A-Za-z]{0,20}(?:PAYMENT|TRANSFER|CREDIT|INSTANT\s*PMT)?[^A-Za-z]{0,20}FROM\s+([A-Za-z][A-Za-z'.\- ]{1,60}?)(?=\s+(?:ON|REF|CONF|CONFIRMATION|#|\d{4,})|$)/i, direction: 'from' },
+  { id: 'zelle_from', re: /ZELLE[^A-Za-z]{0,20}(?:PAYMENT|TRANSFER|CREDIT|INSTANT\s*PMT)?[^A-Za-z]{0,20}FROM\s+([A-Za-z][A-Za-z'. -]{1,60}?)(?=\s+(?:ON|REF|CONF|CONFIRMATION|#|\d{4,})|$)/i, direction: 'from' },
   // "Zelle payment to JANE DOE"
-  { id: 'zelle_to', re: /ZELLE[^A-Za-z]{0,20}(?:PAYMENT|TRANSFER|DEBIT)?[^A-Za-z]{0,20}TO\s+([A-Za-z][A-Za-z'.\- ]{1,60}?)(?=\s+(?:ON|REF|CONF|CONFIRMATION|#|\d{4,})|$)/i, direction: 'to' },
+  { id: 'zelle_to', re: /ZELLE[^A-Za-z]{0,20}(?:PAYMENT|TRANSFER|DEBIT)?[^A-Za-z]{0,20}TO\s+([A-Za-z][A-Za-z'. -]{1,60}?)(?=\s+(?:ON|REF|CONF|CONFIRMATION|#|\d{4,})|$)/i, direction: 'to' },
   // "RECEIVED FROM JOHN SMITH"
-  { id: 'received_from', re: /RECEIVED\s+FROM\s+([A-Za-z][A-Za-z'.\- ]{1,60}?)(?=\s+(?:ON|REF|CONF|#|\d{4,})|$)/i, direction: 'from' },
+  { id: 'received_from', re: /RECEIVED\s+FROM\s+([A-Za-z][A-Za-z'. -]{1,60}?)(?=\s+(?:ON|REF|CONF|#|\d{4,})|$)/i, direction: 'from' },
   // Generic "FROM JOHN SMITH" as a last resort.
-  { id: 'generic_from', re: /\bFROM\s+([A-Za-z][A-Za-z'.\- ]{1,60}?)(?=\s+(?:ON|REF|CONF|#|\d{4,})|$)/i, direction: 'from' },
+  { id: 'generic_from', re: /\bFROM\s+([A-Za-z][A-Za-z'. -]{1,60}?)(?=\s+(?:ON|REF|CONF|#|\d{4,})|$)/i, direction: 'from' },
 ]
 
 /** Trailing noise banks append after the name. */
@@ -141,7 +141,7 @@ function cleanExtractedName(raw: string): string {
   return raw
     .replace(/\b(?:ON|REF|REFERENCE|CONF|CONFIRMATION|ID|TRN|TRACE)\b.*$/i, '')
     .replace(/[#*]+.*$/, '')
-    .replace(/\s*\d[\d\s\-]*$/, '') // trailing reference digits
+    .replace(/\s*\d[\d\s-]*$/, '') // trailing reference digits
     .replace(/\s+/g, ' ')
     .trim()
 }

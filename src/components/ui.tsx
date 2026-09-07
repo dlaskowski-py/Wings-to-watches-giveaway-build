@@ -2,6 +2,7 @@ import { clsx } from 'clsx'
 import type { ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 import { Check, Copy, Loader2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 /* -------------------------------------------------------------------------- *
  * Buttons
@@ -49,6 +50,50 @@ export function Button({
       {loading && <Loader2 className="size-3.5 animate-spin" aria-hidden />}
       {children}
     </button>
+  )
+}
+
+/**
+ * A link that looks like a Button. Router <Link> cannot be nested inside a
+ * <button>, so navigation actions use this rather than a button wrapper.
+ */
+export function LinkButton({
+  to,
+  variant = 'secondary',
+  size = 'md',
+  className,
+  children,
+}: {
+  to: string
+  variant?: ButtonVariant
+  size?: 'sm' | 'md' | 'lg'
+  className?: string
+  children: ReactNode
+}) {
+  const variants: Record<ButtonVariant, string> = {
+    primary: 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm',
+    secondary: 'bg-white text-ink-800 ring-1 ring-ink-200 hover:bg-ink-50',
+    ghost: 'text-ink-600 hover:bg-ink-100 hover:text-ink-900',
+    danger: 'bg-red-600 text-white hover:bg-red-700 shadow-sm',
+  }
+  const sizes = {
+    sm: 'px-2.5 py-1.5 text-xs gap-1.5',
+    md: 'px-3.5 py-2 text-sm gap-2',
+    lg: 'px-5 py-2.5 text-sm gap-2',
+  }
+  return (
+    <Link
+      to={to}
+      className={clsx(
+        'inline-flex items-center justify-center rounded-lg font-medium transition-colors',
+        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
+        variants[variant],
+        sizes[size],
+        className,
+      )}
+    >
+      {children}
+    </Link>
   )
 }
 

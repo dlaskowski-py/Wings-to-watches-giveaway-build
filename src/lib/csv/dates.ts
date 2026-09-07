@@ -106,7 +106,7 @@ export function parseDate(raw: string | null | undefined, order: DateOrder = 'au
   }
 
   // --- Numeric slash/dash/dot formats, optionally with a time -------------
-  const numeric = /^(\d{1,4})[\/\-.](\d{1,2})[\/\-.](\d{1,4})(?:[T ,]\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp][Mm])?)?$/.exec(s)
+  const numeric = /^(\d{1,4})[/.-](\d{1,2})[/.-](\d{1,4})(?:[T ,]\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp][Mm])?)?$/.exec(s)
   if (!numeric) return { ok: false, reason: `unrecognised date format "${raw}"` }
 
   const [, aStr, bStr, cStr, hhStr, miStr, ssStr, ampm] = numeric
