@@ -16,8 +16,8 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Path alias — mirrors vite.config.ts */
-    "baseUrl": ".",
+    /* Path alias — mirrors vite.config.ts. No baseUrl: TypeScript 6 resolves
+       "paths" relative to this file, and baseUrl is deprecated. */
     "paths": { "@/*": ["./src/*"] },
 
     /* Strictness. Money and randomness live here; do not relax these. */

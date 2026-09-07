@@ -12,10 +12,15 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          supabase: ['@supabase/supabase-js'],
-          xlsx: ['write-excel-file'],
+        // Split the heavy third-party code out of the app bundle so a code
+        // change does not invalidate the vendor chunks in the operator's cache.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (id.includes('write-excel-file') || id.includes('@expo/')) return 'xlsx'
+          if (id.includes('@supabase')) return 'supabase'
+          if (id.includes('papaparse')) return 'csv'
+          if (id.includes('react') || id.includes('scheduler')) return 'vendor'
+          return undefined
         },
       },
     },
