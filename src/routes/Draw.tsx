@@ -342,7 +342,7 @@ export function DrawTab() {
                       </p>
                       <p className="text-xs text-emerald-700">
                         held {pluralize(w.tickets, 'ticket')}
-                        {w.status !== 'active' && ` · ${w.status}`}
+                        {w.status && w.status !== 'active' ? ` · ${w.status}` : ''}
                       </p>
                     </div>
                   </div>
@@ -376,7 +376,7 @@ export function DrawTab() {
                       <span className="text-ink-700">#{a.rank} — {a.display_label}</span>
                       <span className="flex items-center gap-2 text-xs text-ink-500">
                         {pluralize(a.tickets, 'ticket')}
-                        {a.status === 'promoted' && <Badge tone="good">promoted</Badge>}
+                        {a.status === 'promoted' ? <Badge tone="good">promoted</Badge> : null}
                       </span>
                     </li>
                   ))}

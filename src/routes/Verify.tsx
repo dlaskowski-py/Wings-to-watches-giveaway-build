@@ -180,7 +180,7 @@ export function VerifyPage() {
                 <p className="text-xs text-emerald-700">
                   held {pluralize(w.tickets, 'ticket')} of {totalTickets.toLocaleString()}
                   {' '}({((w.tickets / Math.max(1, totalTickets)) * 100).toFixed(1)}% chance)
-                  {w.status !== 'active' && ` · ${w.status}`}
+                  {w.status && w.status !== 'active' ? ` · ${w.status}` : ''}
                 </p>
               </li>
             ))}
@@ -196,7 +196,7 @@ export function VerifyPage() {
                     <span className="text-ink-700">#{a.rank} — {a.display_label}</span>
                     <span className="text-xs text-ink-500">
                       {pluralize(a.tickets, 'ticket')}
-                      {a.status === 'promoted' && ' · promoted'}
+                      {a.status === 'promoted' ? ' · promoted' : ''}
                     </span>
                   </li>
                 ))}
