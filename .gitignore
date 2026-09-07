@@ -36,3 +36,6 @@ supabase/.temp/
 /private/
 *.local.csv
 *.local.xlsx
+
+# Netlify CLI local link state
+.netlify/
