@@ -59,20 +59,25 @@ export function Wordmark({
 /**
  * The "made by" strip.
  *
- * A dark band at the foot of the page. The identity is dark-first, so this is
- * the one surface where the mark appears the way it was designed — bone and
- * copper on ink — without turning the whole console dark.
+ * On a white ground, so the mark uses the kit's light-ground pairing: ink for
+ * "ADJL", Signal deep for the rest. That darker copper is not a substitute for
+ * the accent, it IS the accent for this ground — the kit provides it precisely
+ * because the standard Signal (#D9663C) only reaches about 3.5:1 on white and
+ * fails WCAG AA for body text, while Signal deep reaches about 5.7:1.
+ *
+ * Separated by a hairline rather than a filled band, which is the identity's
+ * own device: it divides by line, not by card.
  */
 export function BrandFooter({ className }: { className?: string }) {
   return (
-    <footer className={clsx('mt-16 px-6 py-6', className)} style={{ background: INK }}>
+    <footer className={clsx('border-t border-ink-200 bg-white px-6 py-6', className)}>
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
-        <p className="text-xs" style={{ color: '#6e6b66' }}>
-          Made by <Wordmark tone="dark" size="sm" className="align-baseline" />
+        <p className="text-xs text-ink-500">
+          Made by <Wordmark size="sm" className="align-baseline" />
         </p>
-        <p className="text-xs" style={{ color: '#6e6b66' }}>
+        <p className="text-xs text-ink-400">
           Today&rsquo;s investment. Tomorrow&rsquo;s{' '}
-          <span className="font-light" style={{ color: SIGNAL }}>
+          <span className="font-brand font-light" style={{ color: SIGNAL_DEEP }}>
             legacy.
           </span>
         </p>

@@ -67,9 +67,9 @@ export function SignInPage() {
 
 function BrandFooterSlim() {
   return (
-    <footer className="bg-[#0a0a0b] px-6 py-5">
-      <div className="mx-auto flex max-w-sm items-center justify-center">
-        <Wordmark tone="dark" size="sm" />
+    <footer className="border-t border-ink-200 bg-white px-6 py-5">
+      <div className="mx-auto flex max-w-sm items-center justify-center gap-1.5 text-xs text-ink-500">
+        Made by <Wordmark size="sm" />
       </div>
     </footer>
   )
