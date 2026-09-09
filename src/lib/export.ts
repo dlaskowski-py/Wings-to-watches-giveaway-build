@@ -14,6 +14,8 @@ import writeXlsxFile, { type Column } from 'write-excel-file/browser'
 import { formatCents } from './csv/amount'
 import { sanitizeForSpreadsheet } from './csv/normalize'
 import type { Drawing, Entrant, Payment, DrawResultRow, SnapshotEntry } from './types'
+import { buildMasterRows, oddsOneIn, summariseMaster, type MasterRow } from './master'
+import { BRAND } from '../components/brand'
 
 function triggerDownload(blob: Blob, fileName: string): void {
   const url = URL.createObjectURL(blob)
@@ -34,8 +36,17 @@ function csvCell(value: unknown): string {
   return `"${safe.replace(/"/g, '""')}"`
 }
 
-export function downloadCsv(fileName: string, headers: string[], rows: unknown[][]): void {
-  const lines = [headers.map(csvCell).join(','), ...rows.map((r) => r.map(csvCell).join(','))]
+export function downloadCsv(
+  fileName: string,
+  headers: string[],
+  rows: unknown[][],
+  preamble: unknown[][] = [],
+): void {
+  const lines = [
+    ...preamble.map((r) => r.map(csvCell).join(',')),
+    headers.map(csvCell).join(','),
+    ...rows.map((r) => r.map(csvCell).join(',')),
+  ]
   // BOM so Excel opens UTF-8 correctly on Windows.
   const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' })
   triggerDownload(blob, fileName)
@@ -210,4 +221,195 @@ export function exportVerificationRecord(
   ]
   const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' })
   triggerDownload(blob, `${slug(drawing.name)}-verification.txt`)
+}
+
+/* -------------------------------------------------------------------------- *
+ * The master export
+ *
+ * One row per person, combining Venmo and Zelle. This is the file to keep: the
+ * ledger lists payments, this says what each human actually did across both
+ * rails, which is the only view in which a ticket count can be sanity-checked
+ * by eye.
+ * -------------------------------------------------------------------------- */
+
+const MASTER_HEADERS = [
+  'Entrant', 'Public label', 'Email', 'Phone',
+  'Venmo payments', 'Venmo paid', 'Zelle payments', 'Zelle paid', 'Other payments', 'Other paid',
+  'Total paid', 'Tickets', 'Odds (1 in)', 'Unallocated',
+  'Excluded payments', 'Excluded amount', 'Duplicates', 'Awaiting review', 'Outgoing',
+  'First payment', 'Last payment', 'Flags', 'Matched',
+]
+
+function masterValues(r: MasterRow, totalTickets: number): unknown[] {
+  const odds = oddsOneIn(r.tickets, totalTickets)
+  return [
+    r.displayName, r.displayLabel, r.email ?? '', r.phone ?? '',
+    r.bySource.venmo.payments, formatCents(r.bySource.venmo.cents, false),
+    r.bySource.zelle.payments, formatCents(r.bySource.zelle.cents, false),
+    r.bySource.other.payments + r.bySource.manual.payments,
+    formatCents(r.bySource.other.cents + r.bySource.manual.cents, false),
+    formatCents(r.approvedCents, false), r.tickets, odds ?? '',
+    r.unallocatedCents > 0 ? formatCents(r.unallocatedCents, false) : '',
+    r.excludedPayments || '', r.excludedCents > 0 ? formatCents(r.excludedCents, false) : '',
+    r.duplicatePayments || '', r.pendingPayments || '', r.outgoingPayments || '',
+    r.firstPaidOn ?? '', r.lastPaidOn ?? '', r.flags.join(', '),
+    r.unassigned ? 'NO — unmatched payer' : 'yes',
+  ]
+}
+
+/**
+ * Master CSV.
+ *
+ * Opens with a short provenance block — which drawing, when, the reconciliation
+ * identity — so the file still explains itself when it is opened months later
+ * with no memory of where it came from. The blank line before the header keeps
+ * spreadsheets from folding the preamble into the table.
+ */
+export function exportMasterCsv(drawing: Drawing, payments: Payment[], entrants: Entrant[]): void {
+  const rows = buildMasterRows(payments, entrants)
+  const summary = summariseMaster(rows)
+  const expected = summary.totalTickets * drawing.ticket_price_cents + summary.unallocatedCents
+
+  const preamble: unknown[][] = [
+    [`${drawing.name} — master record`],
+    [BRAND.full, BRAND.motto],
+    ['Exported', new Date().toISOString()],
+    ['Ticket price', formatCents(drawing.ticket_price_cents, false)],
+    ['Entrants with tickets', summary.entrantCount, 'Total tickets', summary.totalTickets],
+    ['Approved money in', formatCents(summary.approvedCents, false),
+      'Tickets x price + unallocated', formatCents(expected, false),
+      expected === summary.approvedCents ? 'RECONCILES' : 'DOES NOT RECONCILE — investigate'],
+    ['Venmo', formatCents(summary.bySource.venmo.cents, false),
+      'Zelle', formatCents(summary.bySource.zelle.cents, false),
+      'Other', formatCents(summary.bySource.other.cents + summary.bySource.manual.cents, false)],
+    ['Excluded', formatCents(summary.excludedCents, false),
+      'Awaiting review', summary.pendingPayments,
+      'Duplicates', summary.duplicatePayments,
+      'Unmatched payers', summary.unassignedRows],
+    [],
+  ]
+
+  downloadCsv(
+    `${slug(drawing.name)}-master.csv`,
+    MASTER_HEADERS,
+    rows.map((r) => masterValues(r, summary.totalTickets)),
+    preamble,
+  )
+}
+
+/**
+ * Master workbook: the same roll-up plus the full payment ledger and a summary,
+ * as three sheets. What you would archive for the quarter.
+ */
+export async function exportMasterWorkbook(
+  drawing: Drawing,
+  payments: Payment[],
+  entrants: Entrant[],
+): Promise<void> {
+  const rows = buildMasterRows(payments, entrants)
+  const summary = summariseMaster(rows)
+  const expected = summary.totalTickets * drawing.ticket_price_cents + summary.unallocatedCents
+  const nameById = new Map(entrants.map((e) => [e.id, e.display_name]))
+
+  const text = (v: string | null | undefined) => ({ value: sanitizeForSpreadsheet(v ?? ''), type: String })
+  const money = (cents: number, blankWhenZero = false) =>
+    blankWhenZero && cents === 0 ? { type: Number } : { value: cents / 100, type: Number, format: '#,##0.00' }
+  const count = (n: number, blankWhenZero = false) =>
+    blankWhenZero && n === 0 ? { type: Number } : { value: n, type: Number }
+  const bold = (value: string) => ({ value, fontWeight: 'bold' as const })
+
+  const summarySheet = [
+    [bold(`${drawing.name} — master record`)],
+    [text(BRAND.full), text(BRAND.motto)],
+    [],
+    [bold('Exported'), text(new Date().toISOString())],
+    [bold('Ticket price'), money(drawing.ticket_price_cents)],
+    [],
+    [bold('Entrants with tickets'), count(summary.entrantCount)],
+    [bold('Total tickets'), count(summary.totalTickets)],
+    [bold('Approved money in'), money(summary.approvedCents)],
+    [bold('Tickets x price + unallocated'), money(expected)],
+    [bold('Reconciles?'), text(expected === summary.approvedCents ? 'YES' : 'NO — investigate')],
+    [],
+    [bold('Venmo'), money(summary.bySource.venmo.cents), count(summary.bySource.venmo.payments)],
+    [bold('Zelle'), money(summary.bySource.zelle.cents), count(summary.bySource.zelle.payments)],
+    [bold('Other / manual'),
+      money(summary.bySource.other.cents + summary.bySource.manual.cents),
+      count(summary.bySource.other.payments + summary.bySource.manual.payments)],
+    [],
+    [bold('Excluded'), money(summary.excludedCents), count(summary.excludedPayments)],
+    [bold('Unallocated'), money(summary.unallocatedCents)],
+    [bold('Awaiting review'), count(summary.pendingPayments)],
+    [bold('Duplicates'), count(summary.duplicatePayments)],
+    [bold('Unmatched payers'), count(summary.unassignedRows)],
+  ]
+
+  const entrantSheet = [
+    MASTER_HEADERS.map(bold),
+    ...rows.map((r) => {
+      const odds = oddsOneIn(r.tickets, summary.totalTickets)
+      return [
+        text(r.displayName), text(r.displayLabel), text(r.email), text(r.phone),
+        count(r.bySource.venmo.payments, true), money(r.bySource.venmo.cents, true),
+        count(r.bySource.zelle.payments, true), money(r.bySource.zelle.cents, true),
+        count(r.bySource.other.payments + r.bySource.manual.payments, true),
+        money(r.bySource.other.cents + r.bySource.manual.cents, true),
+        money(r.approvedCents), count(r.tickets),
+        odds === null ? { type: Number } : count(odds),
+        money(r.unallocatedCents, true),
+        count(r.excludedPayments, true), money(r.excludedCents, true),
+        count(r.duplicatePayments, true), count(r.pendingPayments, true), count(r.outgoingPayments, true),
+        text(r.firstPaidOn), text(r.lastPaidOn), text(r.flags.join(', ')),
+        text(r.unassigned ? 'NO — unmatched payer' : 'yes'),
+      ]
+    }),
+  ]
+
+  const paymentSheet = [
+    LEDGER_HEADERS.map(bold),
+    ...payments.map((p) => [
+      count(p.source_row_number ?? 0, true), text(p.paid_on),
+      text(p.raw_payer_name ?? p.payer_name), text(p.entrant_id ? nameById.get(p.entrant_id) ?? '' : ''),
+      text(p.source), text(p.direction === 'in' ? 'Money in' : 'Money out'),
+      money(p.amount_cents), count(p.entries), money(p.remainder_cents, true),
+      text(p.status), text(p.flags.join(', ')), text(p.note), text(p.external_ref), text(p.exclude_reason),
+    ]),
+  ]
+
+  // Multiple sheets go in as one array of {data, sheet, columns} objects.
+  // Passing the sheets and their options as two parallel arrays is the v3 API
+  // and throws at runtime on v4.
+  const blob = await writeXlsxFile(
+    [
+      {
+        data: summarySheet,
+        sheet: 'Summary',
+        columns: [{ width: 30 }, { width: 22 }, { width: 14 }],
+      },
+      {
+        data: entrantSheet,
+        sheet: 'Entrants',
+        stickyRowsCount: 1,
+        columns: [
+          { width: 26 }, { width: 16 }, { width: 24 }, { width: 16 },
+          { width: 14 }, { width: 12 }, { width: 14 }, { width: 12 }, { width: 14 }, { width: 12 },
+          { width: 12 }, { width: 9 }, { width: 11 }, { width: 12 },
+          { width: 16 }, { width: 15 }, { width: 11 }, { width: 15 }, { width: 10 },
+          { width: 13 }, { width: 13 }, { width: 30 }, { width: 20 },
+        ],
+      },
+      {
+        data: paymentSheet,
+        sheet: 'Payments',
+        stickyRowsCount: 1,
+        columns: [
+          { width: 7 }, { width: 12 }, { width: 24 }, { width: 22 }, { width: 9 }, { width: 11 },
+          { width: 12 }, { width: 9 }, { width: 12 }, { width: 14 }, { width: 34 }, { width: 30 },
+          { width: 20 }, { width: 22 },
+        ],
+      },
+    ] as never,
+  ).toBlob()
+
+  triggerDownload(blob, `${slug(drawing.name)}-master.xlsx`)
 }

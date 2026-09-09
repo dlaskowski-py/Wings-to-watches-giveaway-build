@@ -9,7 +9,7 @@ import {
 import { DRAND_CHAIN_QUICKNET, drandPublicUrl, fetchRoundCorroborated } from '../lib/draw/beacon'
 import { formatDateTime, formatOdds, pluralize } from '../lib/format'
 import { Badge, Button, Callout, Card, LoadingBlock, Spinner } from '../components/ui'
-import { BrandFooter, Wordmark } from '../components/brand'
+import { BrandFooter, Watermark, Wordmark } from '../components/brand'
 
 /**
  * The public verification page.
@@ -406,8 +406,9 @@ function Row({ label, value }: { label: string; value: string | null }) {
 
 function PublicShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="border-b border-ink-200 bg-white">
+    <div className="relative flex min-h-screen flex-col">
+      <Watermark />
+      <header className="relative z-10 border-b border-ink-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6 py-3">
           <p className="text-sm font-semibold text-ink-900">
             Wings to Watches <span className="font-normal text-ink-400">draw verification</span>
@@ -415,15 +416,15 @@ function PublicShell({ children }: { children: React.ReactNode }) {
           <Wordmark size="sm" className="hidden sm:inline" />
         </div>
       </header>
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-8">{children}</main>
-      <div className="mx-auto max-w-3xl px-6 pb-8 text-xs text-ink-400">
+      <main className="relative z-10 mx-auto w-full max-w-3xl flex-1 px-6 py-8">{children}</main>
+      <div className="relative z-10 mx-auto max-w-3xl px-6 pb-8 text-xs text-ink-400">
         <p>
           This page reads only public verification data: the commitment values, the frozen entrant list, and the
           result. Payment amounts, emails and phone numbers are not accessible here.
         </p>
         <p className="mt-1">drand chain <span className="hash">{DRAND_CHAIN_QUICKNET}</span></p>
       </div>
-      <BrandFooter />
+      <BrandFooter className="relative z-10" />
     </div>
   )
 }

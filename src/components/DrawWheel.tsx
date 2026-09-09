@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { clsx } from 'clsx'
 import { Maximize2, Minimize2, Trophy, X } from 'lucide-react'
 import {
   buildWedges, easeOutQuint, planSpin, wedgeAtRotation, wedgeColor,
   type WheelEntrant,
 } from '../lib/wheel'
 import { formatOdds, pluralize } from '../lib/format'
-import { Wordmark } from './brand'
+import { BRAND, BrandStamp, Watermark, Wordmark } from './brand'
 
 /**
  * The reveal wheel.
@@ -50,6 +49,15 @@ interface Props {
 
 const SPIN_MS = 7000
 const LABEL_MIN_SWEEP_DEG = 7 // below this, rim text is unreadable
+
+/**
+ * Widest usable line inside the hub is about 34 viewBox units. Manrope Bold
+ * runs near 0.58em per character, so size the name to fit rather than letting a
+ * long display label spill over the arc.
+ */
+function hubFontSize(name: string): number {
+  return Math.min(6.4, 34 / Math.max(1, name.length * 0.58))
+}
 
 export function DrawWheel({ entrants, results, drawingName, beaconRound, onClose }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -159,7 +167,7 @@ export function DrawWheel({ entrants, results, drawingName, beaconRound, onClose
           const a = toCanvas(winner.midDeg)
           ctx.save()
           ctx.beginPath()
-          ctx.moveTo(cx + Math.cos(a) * radius * 0.4, cy + Math.sin(a) * radius * 0.4)
+          ctx.moveTo(cx + Math.cos(a) * radius * 0.48, cy + Math.sin(a) * radius * 0.48)
           ctx.lineTo(cx + Math.cos(a) * radius, cy + Math.sin(a) * radius)
           ctx.strokeStyle = '#0a0a0b'
           ctx.lineWidth = 6
@@ -179,9 +187,10 @@ export function DrawWheel({ entrants, results, drawingName, beaconRound, onClose
         }
       }
 
-      // Hub
+      // Hub. Sized to hold both the name and the brand ring drawn over it, so
+      // a clip cropped to the wheel alone still carries the mark.
       ctx.beginPath()
-      ctx.arc(cx, cy, radius * 0.42, 0, Math.PI * 2)
+      ctx.arc(cx, cy, radius * 0.46, 0, Math.PI * 2)
       ctx.fillStyle = '#ffffff'
       ctx.fill()
       ctx.strokeStyle = 'rgba(10,10,11,0.12)'
@@ -316,8 +325,12 @@ export function DrawWheel({ entrants, results, drawingName, beaconRound, onClose
       aria-modal="true"
       aria-label={`Drawing ${drawingName}`}
     >
+      {/* Recorded surface: tiled watermark underneath, legible stamp on top. */}
+      <Watermark strength="stream" rows={16} />
+      <BrandStamp className="absolute bottom-16 right-6 z-20 hidden text-right sm:block" />
+
       {/* Header: says plainly that the result already exists. */}
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-ink-200 px-6 py-3">
+      <header className="relative z-10 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-ink-200 bg-white/80 px-6 py-3 backdrop-blur-sm">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-ink-900">{drawingName}</p>
           <p className="text-xs text-ink-500">
@@ -347,7 +360,7 @@ export function DrawWheel({ entrants, results, drawingName, beaconRound, onClose
       {/* Sized to fit whatever the stream is running at: the wheel takes the
           space left over rather than a fixed height, so nothing important ends
           up below the fold on a 720p capture. */}
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6 py-4 sm:gap-4">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6 py-4 sm:gap-4">
         <p className="shrink-0 text-xs font-semibold uppercase tracking-[0.18em] text-ink-500">
           {current.isAlternate
             ? `Alternate ${current.rank - results.filter((r) => !r.isAlternate).length}`
@@ -374,19 +387,73 @@ export function DrawWheel({ entrants, results, drawingName, beaconRound, onClose
             <canvas ref={canvasRef} className="size-full" />
           </div>
 
-          {/* Hub: the name currently under the pointer. */}
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="max-w-[38%] text-center">
-              <p
-                className={clsx(
-                  'font-brand font-bold leading-tight text-ink-900 transition-opacity',
-                  spinning ? 'text-lg opacity-60 sm:text-xl' : 'text-xl sm:text-2xl',
-                )}
+          {/*
+            Brand ring. Sits on the hub and does NOT rotate, so it stays
+            readable at full speed and survives a crop tight to the wheel —
+            which is how these clips get reposted.
+          */}
+          {/*
+            Hub contents live in the SVG rather than in HTML so that everything
+            inside the white disc scales with the wheel. Fixed CSS type sizes
+            looked right at 1080p and collided with the arc at 720p, which is a
+            resolution this actually gets streamed at.
+
+            The mark does not rotate: it stays readable at full speed, and it
+            survives a crop tight to the wheel, which is how these clips get
+            reposted.
+          */}
+          <svg
+            className="pointer-events-none absolute inset-0 size-full"
+            viewBox="0 0 100 100"
+            aria-hidden
+          >
+            {/* Arc across the top of the hub, laid out like a seal. */}
+            <path id="adjl-wheel-arc" d="M 31.81 46.13 A 18.6 18.6 0 0 1 68.19 46.13" fill="none" />
+            <text className="font-brand" fontSize="3.6" fontWeight="800" fill="#a94a29">
+              <textPath
+                href="#adjl-wheel-arc"
+                startOffset="50%"
+                textAnchor="middle"
+                textLength="49"
+                lengthAdjust="spacingAndGlyphs"
               >
-                {hubName ?? '—'}
-              </p>
-            </div>
-          </div>
+                {BRAND.full.toUpperCase()}
+              </textPath>
+            </text>
+
+            {/* The name currently under the pointer. */}
+            <text
+              className="font-brand transition-opacity"
+              x="50"
+              y="50.5"
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontWeight="700"
+              fontSize={hubFontSize(hubName ?? '—')}
+              fill="#0a0a0b"
+              opacity={spinning ? 0.65 : 1}
+            >
+              {hubName ?? '—'}
+            </text>
+
+            {/*
+              Motto, split across two lines. Bent around this radius it comes
+              out too small to survive a stream encode, and the hub is the part
+              of the frame a clip is most likely to be cropped to.
+            */}
+            <text
+              className="font-brand"
+              x="50"
+              textAnchor="middle"
+              fontWeight="600"
+              fontSize="2.4"
+              letterSpacing="0.26"
+              fill="#8b8b90"
+            >
+              <tspan y="58.4">{BRAND.mottoLines[0].toUpperCase()}</tspan>
+              <tspan x="50" y="62.4">{BRAND.mottoLines[1].toUpperCase()}</tspan>
+            </text>
+          </svg>
         </div>
 
         {/* Result card */}
@@ -428,9 +495,11 @@ export function DrawWheel({ entrants, results, drawingName, beaconRound, onClose
         </div>
       </div>
 
-      <footer className="shrink-0 border-t border-ink-200 px-6 py-2 text-center">
+      <footer className="relative z-10 shrink-0 border-t border-ink-200 bg-white/80 px-6 py-2 text-center backdrop-blur-sm">
         <span className="text-xs text-ink-400">
           Made by <Wordmark size="sm" className="align-baseline" />
+          <span className="mx-2 text-ink-300">&middot;</span>
+          {BRAND.motto}
         </span>
       </footer>
 

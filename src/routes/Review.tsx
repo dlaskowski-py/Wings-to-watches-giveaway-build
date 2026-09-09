@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Check, Download, FileSpreadsheet, Search, X } from 'lucide-react'
+import { Check, Download, FileSpreadsheet, Layers, Search, X } from 'lucide-react'
 import { useDrawing } from './DrawingLayout'
 import { listEntrants, listPayments, updatePayment, updatePaymentsBulk, writeAudit } from '../lib/db'
 import { PAYMENT_FLAGS, type PaymentFlag } from '../lib/csv/types'
 import type { Entrant, Payment, PaymentStatus } from '../lib/types'
 import { formatCents, pluralize } from '../lib/format'
-import { exportLedgerCsv, exportLedgerXlsx, type LedgerRow } from '../lib/export'
+import {
+  exportLedgerCsv, exportLedgerXlsx, exportMasterCsv, exportMasterWorkbook, type LedgerRow,
+} from '../lib/export'
 import {
   Badge, Button, Callout, Card, EmptyState, ErrorBlock, Input, LoadingBlock, Select, Stat,
 } from '../components/ui'
@@ -148,14 +150,14 @@ export function ReviewTab() {
         title="Reconciliation"
         description="Tie these numbers out against what actually landed in your account before you lock."
         actions={
-          <div className="flex gap-2">
-            <Button size="sm" onClick={() => exportLedgerCsv(drawing, ledgerRows)}>
-              <Download className="size-3.5" aria-hidden />
-              CSV
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="primary" onClick={() => exportMasterCsv(drawing, payments, entrants)}>
+              <Layers className="size-3.5" aria-hidden />
+              Master CSV
             </Button>
-            <Button size="sm" onClick={() => void exportLedgerXlsx(drawing, ledgerRows)}>
+            <Button size="sm" onClick={() => void exportMasterWorkbook(drawing, payments, entrants)}>
               <FileSpreadsheet className="size-3.5" aria-hidden />
-              Excel
+              Master workbook
             </Button>
           </div>
         }
@@ -177,6 +179,13 @@ export function ReviewTab() {
             {r.excluded_count > 0 && <> {pluralize(r.excluded_count, 'payment')} excluded ({formatCents(r.excluded_cents)}).</>}
           </p>
         )}
+
+        <p className="mt-3 text-xs text-ink-500">
+          The <span className="font-medium">master</span> files cover every payment across Venmo and Zelle,
+          one row per person, whatever filters are set below — that is the copy to keep. The workbook adds a
+          summary sheet and the full payment ledger. To export just what the table below is showing, use the
+          buttons above it.
+        </p>
 
         {pending > 0 && (
           <Callout tone="warn" title={`${pluralize(pending, 'payment')} still needs a decision`}>
@@ -216,6 +225,18 @@ export function ReviewTab() {
       <Card
         title="Payments"
         description={`${visible.length.toLocaleString()} of ${payments.length.toLocaleString()} shown`}
+        actions={
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => exportLedgerCsv(drawing, ledgerRows)}>
+              <Download className="size-3.5" aria-hidden />
+              Export this view (CSV)
+            </Button>
+            <Button size="sm" onClick={() => void exportLedgerXlsx(drawing, ledgerRows)}>
+              <FileSpreadsheet className="size-3.5" aria-hidden />
+              Excel
+            </Button>
+          </div>
+        }
       >
         <div className="mb-4 flex flex-wrap items-end gap-3">
           <div className="min-w-48 flex-1">
