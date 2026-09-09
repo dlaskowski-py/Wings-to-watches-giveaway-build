@@ -36,8 +36,6 @@ export const BRAND = {
   /** Motto split so "legacy." can carry the accent colour. */
   mottoLead: 'Today\u2019s investment. Tomorrow\u2019s',
   mottoAccent: 'legacy.',
-  /** The motto broken at its sentence, for places too narrow for one line. */
-  mottoLines: ['Today\u2019s investment.', 'Tomorrow\u2019s legacy.'] as const,
 } as const
 
 const INK = '#0a0a0b'
