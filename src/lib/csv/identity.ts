@@ -211,7 +211,7 @@ export function compareNames(rawA: string, rawB: string): NameMatch {
   const b = normalizeName(rawB)
 
   if (a === '' || b === '') return { score: 0, reason: 'one name is empty' }
-  if (a === b) return { score: 1, reason: 'exact match after normalisation' }
+  if (a === b) return { score: 1, reason: 'exact match after normalization' }
 
   const ta = a.split(' ')
   const tb = b.split(' ')

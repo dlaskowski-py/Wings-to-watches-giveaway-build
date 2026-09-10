@@ -179,9 +179,9 @@ export function VerifyPage() {
         <Card title="Result" className="mb-6">
           <ol className="space-y-2">
             {winners.map((w) => (
-              <li key={w.rank} className="rounded-lg bg-emerald-50 px-4 py-3 ring-1 ring-emerald-200">
-                <p className="text-sm font-semibold text-emerald-900">#{w.rank} — {w.display_label}</p>
-                <p className="text-xs text-emerald-700">
+              <li key={w.rank} className="rounded-lg bg-good-50 px-4 py-3 ring-1 ring-good-200">
+                <p className="text-sm font-semibold text-good-900">#{w.rank} — {w.display_label}</p>
+                <p className="text-xs text-good-700">
                   held {pluralize(w.tickets, 'ticket')} of {totalTickets.toLocaleString()}
                   {' '}({formatOdds(w.tickets, totalTickets)})
                   {w.status && w.status !== 'active' ? ` · ${w.status}` : ''}
@@ -191,7 +191,7 @@ export function VerifyPage() {
           </ol>
           {alternates.length > 0 && (
             <div className="mt-4">
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-500">
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-label text-ink-500">
                 Alternates, drawn in the same pass
               </h3>
               <ol className="space-y-1">
@@ -225,7 +225,7 @@ export function VerifyPage() {
             The entrant list is frozen and its hash is published below. The winners depend on drand round{' '}
             <span className="hash">{drawing.beacon_round}</span>, which is expected at{' '}
             {formatDateTime(drawing.beacon_expected_at)}. Until then the value does not exist, so nobody — the
-            organiser included — can know or influence the outcome.
+            organizer included — can know or influence the outcome.
           </Callout>
         ) : (
           <div className="space-y-4">
@@ -248,9 +248,9 @@ export function VerifyPage() {
                   {report.checks.map((check) => (
                     <li key={check.id} className="flex gap-3 rounded-lg bg-ink-50 px-4 py-3">
                       {check.passed ? (
-                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" aria-hidden />
+                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-good-600" aria-hidden />
                       ) : (
-                        <XCircle className="mt-0.5 size-4 shrink-0 text-red-600" aria-hidden />
+                        <XCircle className="mt-0.5 size-4 shrink-0 text-bad-600" aria-hidden />
                       )}
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-ink-900">{check.label}</p>
@@ -261,9 +261,9 @@ export function VerifyPage() {
 
                   <li className="flex gap-3 rounded-lg bg-ink-50 px-4 py-3">
                     {beaconOk === true ? (
-                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" aria-hidden />
+                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-good-600" aria-hidden />
                     ) : beaconOk === false ? (
-                      <XCircle className="mt-0.5 size-4 shrink-0 text-red-600" aria-hidden />
+                      <XCircle className="mt-0.5 size-4 shrink-0 text-bad-600" aria-hidden />
                     ) : (
                       <span className="mt-0.5 size-4 shrink-0 rounded-full bg-ink-300" aria-hidden />
                     )}
@@ -331,7 +331,7 @@ export function VerifyPage() {
         {showList && (
           <div className="scroll-x mt-4 max-h-96 overflow-y-auto rounded-lg ring-1 ring-ink-200">
             <table className="min-w-full text-sm">
-              <thead className="sticky top-0 bg-ink-50 text-xs uppercase tracking-wide text-ink-500">
+              <thead className="sticky top-0 bg-ink-50 text-xs font-semibold uppercase tracking-column text-ink-500">
                 <tr>
                   <th className="px-3 py-2 text-left font-medium">Entrant</th>
                   <th className="px-3 py-2 text-left font-medium">Public id</th>
@@ -343,7 +343,7 @@ export function VerifyPage() {
                 {entries.map((e) => {
                   const won = results.find((r) => r.public_id === e.public_id)
                   return (
-                    <tr key={e.public_id} className={won && !won.is_alternate ? 'bg-emerald-50' : undefined}>
+                    <tr key={e.public_id} className={won && !won.is_alternate ? 'bg-good-50' : undefined}>
                       <td className="px-3 py-2 font-medium text-ink-800">
                         {e.display_label}
                         {won && <Badge tone={won.is_alternate ? 'neutral' : 'good'} className="ml-2">#{won.rank}</Badge>}
@@ -366,7 +366,7 @@ export function VerifyPage() {
         <ol className="list-decimal space-y-2 pl-5 text-sm text-ink-700">
           <li>
             <strong>Before the draw</strong>, the entrant list was frozen and its SHA-256 hash published, along
-            with the hash of a secret seed the organiser could not read, and the number of a drand beacon round
+            with the hash of a secret seed the organizer could not read, and the number of a drand beacon round
             that had not happened yet.
           </li>
           <li>
@@ -379,7 +379,7 @@ export function VerifyPage() {
             secret seed and the beacon value together — then the seed was revealed.
           </li>
           <li>
-            <strong>Why the organiser could not cheat:</strong> committing to a seed alone would not be enough,
+            <strong>Why the organizer could not cheat:</strong> committing to a seed alone would not be enough,
             because they could generate thousands of seeds privately and publish only the one where their friend
             wins. Mixing in a beacon value that did not exist when they committed removes that option entirely.
           </li>
@@ -413,7 +413,7 @@ function PublicShell({ children }: { children: React.ReactNode }) {
           <p className="text-sm font-semibold text-ink-900">
             Wings to Watches <span className="font-normal text-ink-400">draw verification</span>
           </p>
-          <Wordmark size="sm" className="hidden sm:inline" />
+          <Wordmark size="sm" className="max-sm:hidden" />
         </div>
       </header>
       <main className="relative z-10 mx-auto w-full max-w-3xl flex-1 px-6 py-8">{children}</main>

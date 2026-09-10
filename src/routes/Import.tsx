@@ -460,7 +460,7 @@ export function ImportTab() {
               <h3 className="mb-2 text-sm font-medium text-ink-800">First 20 rows, as they will be read</h3>
               <div className="scroll-x rounded-lg ring-1 ring-ink-200">
                 <table className="min-w-full text-sm">
-                  <thead className="bg-ink-50 text-xs uppercase tracking-wide text-ink-500">
+                  <thead className="bg-ink-50 text-xs font-semibold uppercase tracking-column text-ink-500">
                     <tr>
                       <th className="px-3 py-2 text-left font-medium">Row</th>
                       <th className="px-3 py-2 text-left font-medium">Date</th>
@@ -475,7 +475,7 @@ export function ImportTab() {
                       <tr key={i} className={row.direction === 'out' ? 'bg-ink-50/60 text-ink-400' : ''}>
                         <td className="px-3 py-2 tabular text-ink-400">{row.sourceRowNumber}</td>
                         <td className="px-3 py-2 tabular">{row.paidOn ?? '—'}</td>
-                        <td className="px-3 py-2">{row.rawPayerName ?? <span className="text-red-600">no payer</span>}</td>
+                        <td className="px-3 py-2">{row.rawPayerName ?? <span className="text-bad-600">no payer</span>}</td>
                         <td className="px-3 py-2 text-right tabular">
                           {row.direction === 'out' ? '−' : ''}{formatCents(row.amountCents)}
                         </td>
@@ -497,7 +497,7 @@ export function ImportTab() {
             {preview.rejected.length > 0 && (
               <details className="rounded-lg bg-ink-50 px-4 py-3">
                 <summary className="cursor-pointer text-sm font-medium text-ink-800">
-                  <AlertTriangle className="mr-1 inline size-4 text-amber-600" aria-hidden />
+                  <AlertTriangle className="mr-1 inline size-4 text-warn-700" aria-hidden />
                   {pluralize(preview.rejected.length, 'row')} skipped — usually balance lines and blank separators
                 </summary>
                 <ul className="mt-2 space-y-1 text-xs text-ink-600">

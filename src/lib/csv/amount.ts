@@ -110,7 +110,7 @@ export function parseAmountToCents(raw: string | number | null | undefined): Amo
   s = s.trim()
   if (s === '') return { ok: false, reason: 'no digits' }
 
-  if (!/^[0-9.,]+$/.test(s)) return { ok: false, reason: `unrecognised characters in "${raw}"` }
+  if (!/^[0-9.,]+$/.test(s)) return { ok: false, reason: `unrecognized characters in "${raw}"` }
 
   const { intPart, fracPart, error, ambiguous } = splitDecimal(s)
   if (error) return { ok: false, reason: error }
@@ -120,7 +120,7 @@ export function parseAmountToCents(raw: string | number | null | undefined): Amo
 
   // Integer arithmetic only.
   const intDigits = intPart === '' ? '0' : intPart
-  if (!/^\d+$/.test(intDigits)) return { ok: false, reason: `unrecognised number "${raw}"` }
+  if (!/^\d+$/.test(intDigits)) return { ok: false, reason: `unrecognized number "${raw}"` }
   const centsFromInt = Number(intDigits) * 100
   const centsFromFrac = Number((fracPart + '00').slice(0, 2))
   const cents = centsFromInt + centsFromFrac

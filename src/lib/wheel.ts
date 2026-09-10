@@ -148,19 +148,57 @@ export function easeOutQuint(t: number): number {
 }
 
 /**
- * Wedge colours, drawn from the ADJL palette.
+ * Wedge colours, from the ADJL Technology spectrum.
  *
- * Chosen so neighbours always differ, and so the ring reads as a warm band
- * rather than a clown wheel when a thousand wedges blur together at speed.
+ * Copper and teal are the two halves of the kit's own palette, alternated so
+ * neighbours always differ and so the ring reads as a band rather than a clown
+ * wheel when a thousand wedges blur together at speed. These are fills, never
+ * text, which is why the art-only --teal can appear here.
+ *
+ * Violet is deliberately absent: the kit assigns it to inference and models,
+ * and a giveaway wheel is neither. Using it decoratively would spend a
+ * meaning the rest of the system relies on.
  */
 export const WHEEL_COLORS = [
-  '#d9663c', // signal
+  '#d9542a', // signal
+  '#0a7070', // teal deep
+  '#e2734b', // signal, lightened
   '#1f5e4e', // viridian
-  '#ee9166', // signal light
-  '#3e8f79', // viridian light
-  '#a94a29', // signal deep
-  '#c9954a', // mid
+  '#c2451c', // signal deep
+  '#0fa3a3', // teal
 ] as const
+
+/** Relative luminance, per WCAG 2.1. */
+function luminance(hex: string): number {
+  const n = parseInt(hex.slice(1), 16)
+  const lin = (v: number) => {
+    const c = v / 255
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  }
+  return 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255)
+}
+
+const LABEL_INK = '#0e1117'
+const LABEL_PAPER = '#fafafc'
+
+/**
+ * Ink or paper, whichever actually measures better on the given fill.
+ *
+ * The wheel's palette spans a light copper and a dark teal, so one fixed label
+ * colour cannot serve both: white on #E2734B is 2.97:1 and unreadable at the
+ * size a rim label is drawn. This compares the two candidates rather than
+ * testing luminance against a threshold — the crossover sits at 0.187 for this
+ * pair, which is not a number anyone would guess, and it moves if either
+ * candidate changes.
+ */
+export function labelColorOn(fill: string): string {
+  const target = luminance(fill)
+  const ratio = (c: string) => {
+    const [hi, lo] = [luminance(c), target].sort((a, b) => b - a) as [number, number]
+    return (hi + 0.05) / (lo + 0.05)
+  }
+  return ratio(LABEL_INK) >= ratio(LABEL_PAPER) ? LABEL_INK : LABEL_PAPER
+}
 
 export function wedgeColor(index: number): string {
   return WHEEL_COLORS[index % WHEEL_COLORS.length]!

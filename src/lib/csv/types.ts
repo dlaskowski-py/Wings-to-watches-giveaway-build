@@ -80,8 +80,8 @@ export const PAYMENT_FLAGS = {
   non_usd_currency: 'Amount may not be in US dollars',
   excess_precision: 'Amount had more than two decimal places',
   assumed_century: 'Two-digit year; century was assumed',
-  failed_status: 'Source marked this transaction as failed, pending or cancelled',
-  formula_sanitized: 'A cell began with a spreadsheet formula character and was neutralised',
+  failed_status: 'Source marked this transaction as failed, pending or canceled',
+  formula_sanitized: 'A cell began with a spreadsheet formula character and was neutralized',
 } as const
 
 export type PaymentFlag = keyof typeof PAYMENT_FLAGS

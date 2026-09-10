@@ -96,7 +96,7 @@ export function parseDate(raw: string | null | undefined, order: DateOrder = 'au
     const dayStr = (named[2] ?? named[4])!
     const yearStr = (named[3] ?? named[6])!
     const m = MONTHS[monthWord]
-    if (m === undefined) return { ok: false, reason: `unrecognised month "${monthWord}"` }
+    if (m === undefined) return { ok: false, reason: `unrecognized month "${monthWord}"` }
     const { year, assumed } = expandYear(yearStr)
     if (assumed) flags.push('assumed_century')
     const d = Number(dayStr)
@@ -107,7 +107,7 @@ export function parseDate(raw: string | null | undefined, order: DateOrder = 'au
 
   // --- Numeric slash/dash/dot formats, optionally with a time -------------
   const numeric = /^(\d{1,4})[/.-](\d{1,2})[/.-](\d{1,4})(?:[T ,]\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp][Mm])?)?$/.exec(s)
-  if (!numeric) return { ok: false, reason: `unrecognised date format "${raw}"` }
+  if (!numeric) return { ok: false, reason: `unrecognized date format "${raw}"` }
 
   const [, aStr, bStr, cStr, hhStr, miStr, ssStr, ampm] = numeric
   const a = Number(aStr), b = Number(bStr), c = Number(cStr)

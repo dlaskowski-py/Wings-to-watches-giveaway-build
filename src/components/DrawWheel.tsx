@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Maximize2, Minimize2, Trophy, X } from 'lucide-react'
 import {
-  buildWedges, easeOutQuint, planSpin, wedgeAtRotation, wedgeColor,
+  buildWedges, easeOutQuint, labelColorOn, planSpin, wedgeAtRotation, wedgeColor,
   type WheelEntrant,
 } from '../lib/wheel'
 import { formatOdds, pluralize } from '../lib/format'
@@ -132,7 +132,7 @@ export function DrawWheel({ entrants, results, drawingName, beaconRound, onClose
         ctx.moveTo(cx, cy)
         ctx.arc(cx, cy, radius, toCanvas(w.startDeg), toCanvas(w.startDeg + w.sweepDeg))
         ctx.closePath()
-        ctx.fillStyle = isWinner ? '#efeae1' : wedgeColor(i)
+        ctx.fillStyle = isWinner ? '#fceee8' : wedgeColor(i)
         ctx.fill()
         // Hairlines only while wedges are wide enough for them to read as
         // separators rather than as noise.
@@ -142,7 +142,7 @@ export function DrawWheel({ entrants, results, drawingName, beaconRound, onClose
           ctx.stroke()
         }
         if (isWinner) {
-          ctx.strokeStyle = '#a94a29'
+          ctx.strokeStyle = '#c2451c'
           ctx.lineWidth = 3
           ctx.stroke()
         }
@@ -152,11 +152,13 @@ export function DrawWheel({ entrants, results, drawingName, beaconRound, onClose
         ctx.font = '600 15px Manrope, system-ui, sans-serif'
         ctx.textAlign = 'right'
         ctx.textBaseline = 'middle'
-        for (const w of wedges) {
+        for (const [i, w] of wedges.entries()) {
           ctx.save()
           ctx.translate(cx, cy)
           ctx.rotate(toCanvas(w.midDeg))
-          ctx.fillStyle = highlight === w.publicId ? '#0a0a0b' : '#ffffff'
+          // Ink or paper, whichever reads on this wedge's own fill. The index
+          // has to match the one the fill was drawn with, hence entries().
+          ctx.fillStyle = highlight === w.publicId ? '#0e1117' : labelColorOn(wedgeColor(i))
           const text = w.label.length > 18 ? `${w.label.slice(0, 17)}…` : w.label
           ctx.fillText(text, radius - 14, 0)
           ctx.restore()
@@ -180,18 +182,18 @@ export function DrawWheel({ entrants, results, drawingName, beaconRound, onClose
           ctx.beginPath()
           ctx.moveTo(cx + Math.cos(a) * radius * 0.44, cy + Math.sin(a) * radius * 0.44)
           ctx.lineTo(cx + Math.cos(a) * radius, cy + Math.sin(a) * radius)
-          ctx.strokeStyle = '#0a0a0b'
+          ctx.strokeStyle = '#0e1117'
           ctx.lineWidth = 6
           ctx.lineCap = 'round'
           ctx.stroke()
-          ctx.strokeStyle = '#efeae1'
+          ctx.strokeStyle = '#fceee8'
           ctx.lineWidth = 3
           ctx.stroke()
           ctx.beginPath()
           ctx.arc(cx + Math.cos(a) * radius * 0.93, cy + Math.sin(a) * radius * 0.93, 7, 0, Math.PI * 2)
-          ctx.fillStyle = '#efeae1'
+          ctx.fillStyle = '#fceee8'
           ctx.fill()
-          ctx.strokeStyle = '#0a0a0b'
+          ctx.strokeStyle = '#0e1117'
           ctx.lineWidth = 2.5
           ctx.stroke()
           ctx.restore()
@@ -203,7 +205,7 @@ export function DrawWheel({ entrants, results, drawingName, beaconRound, onClose
       ctx.arc(cx, cy, radius * 0.42, 0, Math.PI * 2)
       ctx.fillStyle = '#ffffff'
       ctx.fill()
-      ctx.strokeStyle = 'rgba(10,10,11,0.12)'
+      ctx.strokeStyle = 'rgba(14, 17, 23, 0.12)' // --ink at 12%
       ctx.lineWidth = 2
       ctx.stroke()
     },
@@ -377,7 +379,7 @@ export function DrawWheel({ entrants, results, drawingName, beaconRound, onClose
           space left over rather than a fixed height, so nothing important ends
           up below the fold on a 720p capture. */}
       <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6 py-4 sm:gap-4">
-        <p className="shrink-0 text-xs font-semibold uppercase tracking-[0.18em] text-ink-500">
+        <p className="shrink-0 text-xs font-semibold uppercase tracking-label text-ink-500">
           {current.isAlternate
             ? `Alternate ${current.rank - results.filter((r) => !r.isAlternate).length}`
             : `Winner ${current.rank}`}
@@ -394,7 +396,7 @@ export function DrawWheel({ entrants, results, drawingName, beaconRound, onClose
               width: 0, height: 0,
               borderLeft: '14px solid transparent',
               borderRight: '14px solid transparent',
-              borderTop: '26px solid #a94a29',
+              borderTop: '26px solid #c2451c',
               filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.25))',
             }}
             aria-hidden
@@ -426,7 +428,7 @@ export function DrawWheel({ entrants, results, drawingName, beaconRound, onClose
               dominantBaseline="middle"
               fontWeight="700"
               fontSize={hubFontSize(hubName ?? '—')}
-              fill="#0a0a0b"
+              fill="#0e1117"
               opacity={spinning ? 0.65 : 1}
             >
               {hubName ?? '—'}
@@ -437,12 +439,12 @@ export function DrawWheel({ entrants, results, drawingName, beaconRound, onClose
         {/* Result card */}
         <div className="min-h-28 w-full max-w-2xl shrink-0 text-center">
           {revealed ? (
-            <div className="animate-[fadeUp_320ms_ease-out] rounded-2xl bg-emerald-50 px-6 py-4 ring-1 ring-emerald-200">
-              <Trophy className="mx-auto size-6 text-emerald-600" aria-hidden />
-              <p className="mt-1 font-brand text-3xl font-bold tracking-tight text-emerald-900 sm:text-5xl">
+            <div className="animate-[fadeUp_320ms_ease-out] rounded-2xl bg-good-50 px-6 py-4 ring-1 ring-good-200">
+              <Trophy className="mx-auto size-6 text-good-600" aria-hidden />
+              <p className="mt-1 font-brand text-3xl font-bold tracking-display text-good-900 sm:text-5xl">
                 {current.displayLabel}
               </p>
-              <p className="mt-1.5 text-sm text-emerald-800">
+              <p className="mt-1.5 text-sm text-good-800">
                 held {pluralize(current.tickets, 'ticket')} of {totalTickets.toLocaleString()} —{' '}
                 {formatOdds(current.tickets, totalTickets)}
               </p>

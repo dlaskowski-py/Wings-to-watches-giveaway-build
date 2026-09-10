@@ -1,35 +1,32 @@
 import { clsx } from 'clsx'
 
 /**
- * ADJL Capital Technology mark.
+ * ADJL Technology mark, per the brand kit.
  *
- * Drawn from the ADJL Capital identity system: the wordmark is two weights of
- * Manrope with one word in colour — 700 for "ADJL", 300 for the rest. There is
- * no symbol, no lockup and no containing shape; the weight contrast IS the mark,
- * so it needs no clear-space rule beyond the leading of its line.
+ * The mark is three bars: the firm's initial reduced to a shape. Outer bars in
+ * ink, centre bar in the copper signal at 55% of their width. That proportion
+ * IS the mark — set the bars at equal widths and it reads as a bar chart.
  *
- * The kit specifies different colour for different grounds, and that rule is
- * followed here rather than reused blindly:
+ * Colour follows the ground: ink bars on a light one, paper bars on ink. The
+ * centre bar stays copper on both, and never becomes teal or violet.
  *
- *   on a dark ground  ->  bone text with the copper Signal (#D9663C)
- *   on a light ground ->  ink text with Signal deep (#A94A29), which is the
- *                         darker copper the kit provides precisely because the
- *                         standard Signal does not hold contrast on bone
- *
- * That is why the header mark is not literally white: white on a white header
- * would be invisible. The white mark lives in the dark footer strip, which is
- * the ground the identity is actually designed for.
+ * The wordmark pairs it with "ADJL" at 700 and the tail at 400 in --ink-3. Note
+ * that the copper lives in the MARK here, not in the word — that is the
+ * difference between this kit and the Capital one it descends from.
  */
 
 /**
- * Every piece of ADJL wording lives here. The name appears on a livestream
+ * Every piece of ADJL wording lives here. The name goes out on a livestream
  * watched by the whole group, so it is defined once rather than typed into a
  * dozen components where one could drift.
+ *
+ * The kit's own wordmark reads "ADJL Technology". This console says "ADJL
+ * Capital Technology" because that is the name it was explicitly given.
  */
 export const BRAND = {
   /** Rendered bold. */
   lead: 'ADJL',
-  /** Rendered light, in copper. */
+  /** Rendered regular, in --ink-3. */
   rest: 'Capital Technology',
   full: 'ADJL Capital Technology',
   motto: 'Today\u2019s investment. Tomorrow\u2019s legacy.',
@@ -38,10 +35,66 @@ export const BRAND = {
   mottoAccent: 'legacy.',
 } as const
 
-const INK = '#0a0a0b'
-const BONE = '#efeae1'
-const SIGNAL = '#d9663c'
-const SIGNAL_DEEP = '#a94a29'
+/*
+ * Construction, straight from the kit. One unit is the width of an outer bar,
+ * so the whole mark scales from a single number.
+ */
+export const MARK = {
+  bar: 1,
+  centre: 0.55,
+  gap: 0.42,
+  height: 3.67,
+  radius: 0.22,
+  get width() {
+    return this.bar * 2 + this.centre + this.gap * 2
+  },
+} as const
+
+const BAR = MARK.bar
+const CENTRE = MARK.centre
+const GAP = MARK.gap
+const HEIGHT = MARK.height
+const RADIUS = MARK.radius
+const WIDTH = MARK.width
+
+/** The kit's floor. Below this the centre bar stops reading as a third bar. */
+const MIN_HEIGHT_PX = 16
+
+export function Mark({
+  height = 20,
+  tone = 'light',
+  className,
+}: {
+  /** Rendered height in px. Clamped to the kit's 16px minimum. */
+  height?: number
+  /** 'dark' = sitting on an ink ground; 'light' = sitting on a pale ground. */
+  tone?: 'light' | 'dark'
+  className?: string
+}) {
+  const h = Math.max(MIN_HEIGHT_PX, height)
+  const bars = tone === 'dark' ? 'var(--color-ink-50)' : 'var(--color-ink-900)'
+  return (
+    <svg
+      className={clsx('inline-block shrink-0 align-middle', className)}
+      style={{ height: h, width: (h * WIDTH) / HEIGHT }}
+      viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+      fill="none"
+      aria-hidden
+      focusable="false"
+    >
+      <rect x={0} y={0} width={BAR} height={HEIGHT} rx={BAR * RADIUS} fill={bars} />
+      <rect
+        x={BAR + GAP}
+        y={0}
+        width={CENTRE}
+        height={HEIGHT}
+        rx={CENTRE * RADIUS}
+        fill="var(--color-brand-500)"
+      />
+      <rect x={BAR + GAP + CENTRE + GAP} y={0} width={BAR} height={HEIGHT} rx={BAR * RADIUS} fill={bars} />
+    </svg>
+  )
+}
 
 const SIZES = {
   sm: 'text-sm',
@@ -49,25 +102,42 @@ const SIZES = {
   lg: 'text-lg',
 } as const
 
+/**
+ * Mark height per type size. Slightly taller than the em box so the bars read
+ * as a mark rather than as a letter, and centred on the line box.
+ */
+const MARK_HEIGHTS: Record<keyof typeof SIZES, number> = { sm: 16, md: 18, lg: 21 }
+
 export function Wordmark({
   tone = 'light',
   size = 'md',
+  showMark = true,
   className,
 }: {
   /** 'dark' = sitting on an ink ground; 'light' = sitting on a pale ground. */
   tone?: 'light' | 'dark'
   size?: keyof typeof SIZES
+  /** The kit's lockup includes the mark; drop it where the mark already sits nearby. */
+  showMark?: boolean
   className?: string
 }) {
   const onDark = tone === 'dark'
   return (
     <span
-      className={clsx('font-brand tracking-[-0.02em] whitespace-nowrap', SIZES[size], className)}
-      style={{ color: onDark ? BONE : INK }}
+      className={clsx(
+        'font-brand inline-flex items-center gap-1.5 tracking-head whitespace-nowrap',
+        SIZES[size],
+        onDark ? 'text-ink-50' : 'text-ink-900',
+        className,
+      )}
     >
-      <span className="font-bold">{BRAND.lead}</span>{' '}
-      <span className="font-light" style={{ color: onDark ? SIGNAL : SIGNAL_DEEP }}>
-        {BRAND.rest}
+      {showMark && <Mark tone={tone} height={MARK_HEIGHTS[size]} />}
+      <span>
+        <span className="font-bold">{BRAND.lead}</span>{' '}
+        {/* Below 900px the kit's compact lockup is the mark and "ADJL" alone. */}
+        <span className={clsx('hidden font-normal lockup:inline', onDark ? 'text-ink-300' : 'text-ink-500')}>
+          {BRAND.rest}
+        </span>
       </span>
     </span>
   )
@@ -76,27 +146,20 @@ export function Wordmark({
 /**
  * The "made by" strip.
  *
- * On a white ground, so the mark uses the kit's light-ground pairing: ink for
- * "ADJL", Signal deep for the rest. That darker copper is not a substitute for
- * the accent, it IS the accent for this ground — the kit provides it precisely
- * because the standard Signal (#D9663C) only reaches about 3.5:1 on white and
- * fails WCAG AA for body text, while Signal deep reaches about 5.7:1.
- *
  * Separated by a hairline rather than a filled band, which is the identity's
- * own device: it divides by line, not by card.
+ * own device: it divides by line, not by card. The one copper word is the
+ * text-safe --signal-deep, never the bright --signal, which the kit reserves
+ * for rules and art at 24px and up.
  */
 export function BrandFooter({ className }: { className?: string }) {
   return (
     <footer className={clsx('border-t border-ink-200 bg-white px-6 py-6', className)}>
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-ink-500">
+        <p className="flex items-center gap-1.5 text-xs text-ink-500">
           Made by <Wordmark size="sm" className="align-baseline" />
         </p>
-        <p className="text-xs text-ink-400">
-          {BRAND.mottoLead}{' '}
-          <span className="font-brand font-light" style={{ color: SIGNAL_DEEP }}>
-            {BRAND.mottoAccent}
-          </span>
+        <p className="text-xs text-ink-500">
+          {BRAND.mottoLead} <span className="font-brand font-semibold text-brand-600">{BRAND.mottoAccent}</span>
         </p>
       </div>
     </footer>
@@ -106,26 +169,18 @@ export function BrandFooter({ className }: { className?: string }) {
 /**
  * Tiled watermark.
  *
- * Sized and weighted to survive a livestream rather than to look subtle in a
- * design tool. Streaming codecs throw away low-contrast detail first, so the
- * usual 3-4% opacity watermark simply disappears once the feed is encoded —
- * `strength: 'stream'` sits around 9%, which reads on a compressed capture
- * without competing with the winner's name.
+ * Renders as real rotated text rather than an SVG data URI so it uses the
+ * brand font and stays crisp at any zoom. Inert and hidden from assistive tech.
  *
- * Renders as real rotated text rather than an SVG data URI so it uses the brand
- * font and stays crisp at any zoom. Inert and hidden from assistive tech.
+ * There was a second, heavier 'stream' strength for surfaces being screen
+ * recorded, because streaming codecs discard low-contrast detail first. The
+ * reveal no longer carries a watermark at all, so nothing calls for it — and
+ * it was not free to keep: at 9% the tiles composite the page ground down to
+ * about #E5E5E7, which drags the faint text tier to 4.24:1. At the 5% used
+ * here the ground lands at #EEEEF1 and the faintest text still measures
+ * 4.61:1, so every tier on this page stays above the body-text bar.
  */
-export function Watermark({
-  strength = 'ui',
-  rows = 14,
-  className,
-}: {
-  /** 'ui' for ordinary screens; 'stream' for anything being screen-recorded. */
-  strength?: 'ui' | 'stream'
-  rows?: number
-  className?: string
-}) {
-  const opacity = strength === 'stream' ? 0.09 : 0.05
+export function Watermark({ className }: { className?: string }) {
   const phrase = `${BRAND.full}  \u00b7  ${BRAND.motto}  \u00b7  `
   // Enough repeats to span the widest viewport at this rotation.
   const line = phrase.repeat(8)
@@ -134,16 +189,16 @@ export function Watermark({
     <div
       aria-hidden
       className={clsx('pointer-events-none absolute inset-0 select-none overflow-hidden', className)}
-      style={{ opacity }}
+      style={{ opacity: 0.05 }}
     >
       <div className="absolute -inset-[35%] flex -rotate-[24deg] flex-col justify-around">
-        {Array.from({ length: rows }, (_, i) => (
+        {Array.from({ length: 14 }, (_, i) => (
           <div
             key={i}
             className="whitespace-nowrap font-brand font-semibold uppercase"
             style={{
-              color: INK,
-              fontSize: strength === 'stream' ? '1.05rem' : '0.8rem',
+              color: 'var(--color-ink-900)',
+              fontSize: '0.8rem',
               letterSpacing: '0.28em',
               // Offset alternate rows so the tiling does not read as columns.
               transform: `translateX(${i % 2 === 0 ? '0' : '-6rem'})`,
@@ -167,7 +222,8 @@ export function BrandStamp({ className }: { className?: string }) {
   return (
     <div className={clsx('pointer-events-none select-none', className)} aria-hidden>
       <Wordmark size="sm" />
-      <p className="mt-0.5 font-brand text-[0.68rem] tracking-wide text-ink-400">{BRAND.motto}</p>
+      {/* text-xs is 0.75rem — the kit's label floor, and not a value to nudge down. */}
+      <p className="mt-0.5 font-brand text-xs text-ink-500">{BRAND.motto}</p>
     </div>
   )
 }

@@ -27,7 +27,7 @@ export function Button({
     primary: 'bg-brand-600 text-white hover:bg-brand-700 disabled:bg-brand-300 shadow-sm',
     secondary: 'bg-white text-ink-800 ring-1 ring-ink-200 hover:bg-ink-50 disabled:text-ink-300',
     ghost: 'text-ink-600 hover:bg-ink-100 hover:text-ink-900 disabled:text-ink-300',
-    danger: 'bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300 shadow-sm',
+    danger: 'bg-bad-600 text-white hover:bg-bad-700 disabled:bg-bad-200 shadow-sm',
   }
   const sizes = {
     sm: 'px-2.5 py-1.5 text-xs gap-1.5',
@@ -39,7 +39,7 @@ export function Button({
       {...rest}
       disabled={disabled || loading}
       className={clsx(
-        'inline-flex items-center justify-center rounded-lg font-medium transition-colors',
+        'inline-flex items-center justify-center rounded-lg font-medium transition-colors duration-200 ease-adjl',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
         'disabled:cursor-not-allowed',
         variants[variant],
@@ -74,7 +74,7 @@ export function LinkButton({
     primary: 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm',
     secondary: 'bg-white text-ink-800 ring-1 ring-ink-200 hover:bg-ink-50',
     ghost: 'text-ink-600 hover:bg-ink-100 hover:text-ink-900',
-    danger: 'bg-red-600 text-white hover:bg-red-700 shadow-sm',
+    danger: 'bg-bad-600 text-white hover:bg-bad-700 shadow-sm',
   }
   const sizes = {
     sm: 'px-2.5 py-1.5 text-xs gap-1.5',
@@ -85,7 +85,7 @@ export function LinkButton({
     <Link
       to={to}
       className={clsx(
-        'inline-flex items-center justify-center rounded-lg font-medium transition-colors',
+        'inline-flex items-center justify-center rounded-lg font-medium transition-colors duration-200 ease-adjl',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
         variants[variant],
         sizes[size],
@@ -138,10 +138,13 @@ type Tone = 'neutral' | 'info' | 'warn' | 'good' | 'bad'
 
 const TONE_CLASSES: Record<Tone, string> = {
   neutral: 'bg-ink-100 text-ink-700 ring-ink-200',
-  info: 'bg-brand-50 text-brand-800 ring-brand-200',
-  warn: 'bg-amber-50 text-amber-800 ring-amber-200',
-  good: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
-  bad: 'bg-red-50 text-red-800 ring-red-200',
+  // Teal, not copper. Copper is the action colour — it is on every primary
+  // button — and a status badge is not an action. Teal is the kit's
+  // data-and-measurement half, which is what a drawing's state is.
+  info: 'bg-teal-50 text-teal-800 ring-teal-200',
+  warn: 'bg-warn-50 text-warn-800 ring-warn-200',
+  good: 'bg-good-50 text-good-800 ring-good-200',
+  bad: 'bg-bad-50 text-bad-800 ring-bad-200',
 }
 
 export function Badge({ tone = 'neutral', children, className }: { tone?: Tone; children: ReactNode; className?: string }) {
@@ -183,12 +186,12 @@ export function Stat({
   tone?: Tone
 }) {
   const valueTone =
-    tone === 'bad' ? 'text-red-700' : tone === 'warn' ? 'text-amber-700' : tone === 'good' ? 'text-emerald-700' : 'text-ink-900'
+    tone === 'bad' ? 'text-bad-700' : tone === 'warn' ? 'text-warn-700' : tone === 'good' ? 'text-good-700' : 'text-ink-900'
   return (
-    <div className="rounded-lg bg-ink-50/70 px-4 py-3 ring-1 ring-ink-100">
+    <div className="rounded-lg bg-ink-150 px-4 py-3 ring-1 ring-ink-200">
       <dt className="text-xs font-medium text-ink-500">{label}</dt>
       <dd className={clsx('mt-1 text-xl font-semibold tabular', valueTone)}>{value}</dd>
-      {hint && <p className="mt-0.5 text-xs text-ink-400">{hint}</p>}
+      {hint && <p className="mt-0.5 text-xs text-ink-500">{hint}</p>}
     </div>
   )
 }
@@ -217,14 +220,20 @@ export function Field({
       </label>
       {hint && <p className="mt-0.5 text-xs text-ink-500">{hint}</p>}
       <div className="mt-1.5">{children}</div>
-      {error && <p className="mt-1 text-xs font-medium text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-xs font-medium text-bad-600">{error}</p>}
     </div>
   )
 }
 
+/*
+ * The kit's focus treatment is a 2px accent outline at 3px offset, and it is
+ * the same on every focusable thing. Without outline-none the UA draws its own
+ * dark ring on top of the copper one, which is what shipped before.
+ */
 const CONTROL =
   'block w-full rounded-lg border-0 bg-white px-3 py-2 text-sm text-ink-900 ring-1 ring-inset ring-ink-200 ' +
-  'placeholder:text-ink-400 focus:ring-2 focus:ring-inset focus:ring-brand-500 disabled:bg-ink-50 disabled:text-ink-400'
+  'placeholder:text-ink-400 focus:ring-2 focus:ring-inset focus:ring-brand-500 disabled:bg-ink-50 disabled:text-ink-400 ' +
+  'outline-none focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-brand-500'
 
 export function Input({ className, ...rest }: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input {...rest} className={clsx(CONTROL, className)} />

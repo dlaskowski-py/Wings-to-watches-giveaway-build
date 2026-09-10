@@ -24,10 +24,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             Wings to Watches <span className="font-normal text-ink-400">giveaway console</span>
           </Link>
           <div className="flex items-center gap-4">
-            {/* On a pale header the mark uses the ink/Signal-deep pairing the
-                brand kit specifies for light grounds; the bone-and-copper
-                version lives in the dark footer strip. */}
-            <Wordmark size="sm" className="hidden sm:inline" />
+            <Wordmark size="sm" className="max-sm:hidden" />
             <button
               onClick={() => void signOut()}
               className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-ink-500 hover:bg-ink-100 hover:text-ink-900"
@@ -148,7 +145,7 @@ export function DrawingLayout() {
           {(reconciliation?.needs_review_count ?? 0) > 0 && (
             <div>
               <dt className="text-xs text-ink-400">To review</dt>
-              <dd className="text-sm font-semibold tabular text-amber-700">
+              <dd className="text-sm font-semibold tabular text-warn-700">
                 {reconciliation?.needs_review_count}
               </dd>
             </div>

@@ -298,7 +298,7 @@ export function ReviewTab() {
         ) : (
           <div className="scroll-x rounded-lg ring-1 ring-ink-200">
             <table className="min-w-full text-sm">
-              <thead className="bg-ink-50 text-xs uppercase tracking-wide text-ink-500">
+              <thead className="bg-ink-50 text-xs font-semibold uppercase tracking-column text-ink-500">
                 <tr>
                   {editable && (
                     <th className="w-10 px-3 py-2">
@@ -342,12 +342,12 @@ export function ReviewTab() {
                     )}
                     <td className="whitespace-nowrap px-3 py-2 tabular text-ink-600">{p.paid_on ?? '—'}</td>
                     <td className="px-3 py-2">
-                      <div className="font-medium text-ink-900">{p.raw_payer_name ?? <span className="text-red-600">no payer</span>}</div>
+                      <div className="font-medium text-ink-900">{p.raw_payer_name ?? <span className="text-bad-600">no payer</span>}</div>
                       {(p.payer_email || p.payer_handle) && (
                         <div className="text-xs text-ink-400">{p.payer_email ?? p.payer_handle}</div>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-ink-600">{entrantName(p.entrant_id) ?? <span className="text-amber-700">unassigned</span>}</td>
+                    <td className="px-3 py-2 text-ink-600">{entrantName(p.entrant_id) ?? <span className="text-warn-700">unassigned</span>}</td>
                     <td className="whitespace-nowrap px-3 py-2 text-right tabular">
                       {p.direction === 'out' && <span className="mr-1 text-ink-400">out</span>}
                       {formatCents(p.amount_cents)}

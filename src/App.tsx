@@ -30,7 +30,7 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
   if (!isAdmin) {
     return (
       <div className="mx-auto max-w-lg px-6 py-20 text-center">
-        <h1 className="text-lg font-semibold text-ink-900">The console account isn’t authorised</h1>
+        <h1 className="text-lg font-semibold text-ink-900">The console account isn’t authorized</h1>
         <p className="mt-2 text-sm text-ink-600">
           The passcode worked, but <code className="rounded bg-ink-100 px-1">{CONSOLE_ACCOUNT_EMAIL}</code> is
           not in the <code className="rounded bg-ink-100 px-1">admin_emails</code> table in Supabase, so the

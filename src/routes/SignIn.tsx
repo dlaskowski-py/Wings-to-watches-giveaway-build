@@ -46,7 +46,7 @@ export function SignInPage() {
               />
             </Field>
 
-            {error && <p className="text-xs font-medium text-red-600">{error}</p>}
+            {error && <p className="text-xs font-medium text-bad-600">{error}</p>}
 
             <Button type="submit" variant="primary" loading={busy} className="w-full" disabled={!passcode.trim()}>
               <KeyRound className="size-4" aria-hidden />

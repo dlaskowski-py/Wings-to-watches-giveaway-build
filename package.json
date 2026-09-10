@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/sync-draw-core.mjs --check && tsc -b && vite build && ./scripts/check-bundle.sh",
+    "build": "node scripts/sync-draw-core.mjs --check && node scripts/check-contrast.mjs && node scripts/check-copy.mjs && tsc -b && vite build && ./scripts/check-bundle.sh",
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
@@ -13,7 +13,9 @@
     "typecheck": "tsc -b --force",
     "sync:draw-core": "node scripts/sync-draw-core.mjs",
     "check:bundle": "./scripts/check-bundle.sh",
-    "check:rls": "./scripts/probe-rls.sh"
+    "check:rls": "./scripts/probe-rls.sh",
+    "check:contrast": "node scripts/check-contrast.mjs",
+    "check:copy": "node scripts/check-copy.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.115.0",

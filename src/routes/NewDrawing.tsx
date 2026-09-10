@@ -113,7 +113,7 @@ export function NewDrawingPage() {
                 <Textarea id="prize" rows={2} value={prize} onChange={(e) => setPrize(e.target.value)} />
               </Field>
 
-              {error && <p className="text-sm font-medium text-red-600">{error}</p>}
+              {error && <p className="text-sm font-medium text-bad-600">{error}</p>}
             </div>
           </Card>
 

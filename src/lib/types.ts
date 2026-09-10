@@ -217,5 +217,7 @@ export const DRAWING_STATUS_META: Record<
     tone: 'good',
     blurb: 'Results have been shared with the group.',
   },
-  cancelled: { label: 'Cancelled', tone: 'neutral', blurb: 'This drawing was cancelled.' },
+  // The key is the Postgres enum value and keeps the database's spelling;
+  // only the words shown on screen follow the kit's US English.
+  cancelled: { label: 'Canceled', tone: 'neutral', blurb: 'This drawing was canceled.' },
 }

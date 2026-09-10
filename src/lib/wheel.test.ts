@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  buildWedges, easeOutQuint, normalizeDeg, planSpin, wedgeAtRotation, wedgeColor,
+  buildWedges, easeOutQuint, labelColorOn, normalizeDeg, planSpin, wedgeAtRotation,
+  wedgeColor, WHEEL_COLORS,
   type WheelEntrant,
 } from './wheel'
 
@@ -158,5 +159,62 @@ describe('formatOdds', () => {
     expect(formatOdds(1, 1)).toBe('a certainty')
     expect(formatOdds(0, 100)).toBe('no chance')
     expect(formatOdds(1, 0)).toBe('no chance')
+  })
+})
+
+describe('labelColorOn', () => {
+  it('puts ink on light fills and paper on dark ones', () => {
+    expect(labelColorOn('#e2734b')).toBe('#0e1117') // light copper
+    expect(labelColorOn('#fceee8')).toBe('#0e1117') // the winner tint
+    expect(labelColorOn('#0a7070')).toBe('#fafafc') // teal deep
+    expect(labelColorOn('#1f5e4e')).toBe('#fafafc') // viridian
+  })
+
+  it('clears 4.5:1 for every colour the wheel can actually draw', () => {
+    // A rim label is small text on a solid fill, so it has to meet the normal
+    // bar rather than the large-text one.
+    const lin = (v: number) => {
+      const c = v / 255
+      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+    }
+    const lum = (hex: string) => {
+      const n = parseInt(hex.slice(1), 16)
+      return 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255)
+    }
+    const ratio = (a: string, b: string) => {
+      const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x) as [number, number]
+      return (hi + 0.05) / (lo + 0.05)
+    }
+    // Every palette entry, plus the tint the winning wedge is filled with.
+    for (const fill of [...WHEEL_COLORS, '#fceee8']) {
+      expect(ratio(labelColorOn(fill), fill)).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+
+  it('keeps the palette in step with wedgeColor', () => {
+    expect(wedgeColor(0)).toBe(WHEEL_COLORS[0])
+    expect(wedgeColor(WHEEL_COLORS.length)).toBe(WHEEL_COLORS[0])
+  })
+})
+
+describe('the wheel palette and the design tokens', () => {
+  it('paints only colours that exist as tokens', async () => {
+    // The wheel draws to a canvas, so its colours have to be literals — a
+    // canvas context cannot read a CSS custom property. That makes them a
+    // second copy of values that also live in @theme, and a copy that nothing
+    // checks is a copy that drifts. This is the check.
+    const { readFileSync } = await import('node:fs')
+    const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8')
+    const theme = css.match(/@theme\s*\{([\s\S]*?)\n\}/)?.[1] ?? ''
+    const defined = new Map(
+      [...theme.matchAll(/--color-([a-z0-9-]+):\s*(#[0-9a-fA-F]{6})/g)].map(
+        (m) => [m[2]!.toLowerCase(), m[1]!],
+      ),
+    )
+    expect(defined.size).toBeGreaterThan(0)
+
+    for (const fill of WHEEL_COLORS) {
+      expect(defined.has(fill), `${fill} is painted by the wheel but is not a token`).toBe(true)
+    }
   })
 })

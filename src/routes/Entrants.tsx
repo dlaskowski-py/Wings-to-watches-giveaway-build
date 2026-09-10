@@ -232,7 +232,7 @@ export function EntrantsTab() {
         ) : (
           <div className="scroll-x rounded-lg ring-1 ring-ink-200">
             <table className="min-w-full text-sm">
-              <thead className="bg-ink-50 text-xs uppercase tracking-wide text-ink-500">
+              <thead className="bg-ink-50 text-xs font-semibold uppercase tracking-column text-ink-500">
                 <tr>
                   <th className="px-3 py-2 text-left font-medium">Name</th>
                   <th className="px-3 py-2 text-left font-medium">Public label</th>
@@ -278,7 +278,7 @@ export function EntrantsTab() {
                         {(t?.tickets ?? 0) > 0 ? (
                           <Badge tone="good">{t?.tickets}</Badge>
                         ) : (
-                          <span className="text-ink-300">0</span>
+                          <span className="text-ink-400">0</span>
                         )}
                       </td>
                     </tr>

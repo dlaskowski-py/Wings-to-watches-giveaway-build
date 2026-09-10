@@ -1,48 +1,157 @@
 @import 'tailwindcss';
 
-/* Manrope carries the ADJL Capital wordmark. Only the wordmark uses it — the
-   console itself stays on the system stack, per the brief to add the mark
-   without restyling the interface. */
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;700&display=swap');
+/*
+ * ADJL Technology brand kit, v1.0.
+ *
+ * Every value below is a token from the kit. Where a Tailwind step falls
+ * between two kit values it is interpolated, and scripts/check-contrast.mjs
+ * measures the result against the ground it is actually rendered on — the kit
+ * states a ratio beside each value and says the site fails its build if they
+ * drift, so `npm run build` fails here if one does.
+ *
+ * Two departures from the kit, both deliberate:
+ *
+ *  - The kit self-hosts Manrope as a single variable file to keep a
+ *    third-party font host off the critical path. This console loads it from
+ *    Google Fonts.
+ *  - The kit's type rule is one family in three roles. This console adds a
+ *    second, JetBrains Mono, because it prints SHA-256 hashes and seeds that
+ *    people read character by character to check a commitment. That is a job
+ *    a proportional face cannot do, and the kit's own brand-kit page reaches
+ *    for the same face for the same reason.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
 
 /*
- * Palette. The console is a tool the operator uses a handful of times a year,
- * so it favours legibility and calm over personality: high-contrast text, one
- * accent, and colour reserved for meaning (a flag, a warning, a locked state)
- * rather than decoration.
+ * Two rules from the kit do the most work here, and both are about copper:
+ *
+ *   --signal      #D9542A  3.8:1  rules, focus rings, art. Never small text.
+ *   --signal-deep #C2451C  4.8:1  body links, and white sits on it at 5.0:1.
+ *
+ * One token used for both is how a light site ends up with unreadable links,
+ * so the ramp puts them one step apart: brand-500 is the art value and
+ * brand-600 is the text-and-button value. Same for teal, which has no
+ * text-safe bright version at all — #0FA3A3 is a stroke color and every teal
+ * word is #0A7070.
  */
 @theme {
-  --color-ink-50: #f6f7f9;
-  --color-ink-100: #eceef2;
-  --color-ink-200: #d5d9e2;
-  --color-ink-300: #b0b7c6;
-  --color-ink-400: #7d8799;
-  --color-ink-500: #5a6478;
-  --color-ink-600: #454e60;
-  --color-ink-700: #363d4c;
-  --color-ink-800: #232936;
-  --color-ink-900: #161a23;
-  --color-ink-950: #0d1017;
+  /* ── Ground. Porcelain, not white, so a card can be white and read as
+        lifted. --paper / --paper-3 / --paper-4 from the kit. ───────────── */
+  --color-ink-50: #fafafc;
+  --color-ink-100: #f1f2f6;
+  /* The kit's --paper-4, its inset-surface value. */
+  --color-ink-150: #e8eaf1;
+  /* Hairlines. The kit names four grounds but no rule color; --paper-4 sits at
+     1.15:1 on the porcelain ground and a card edge drawn in it disappears, so
+     this is interpolated a step deeper to hold the same edge the console had
+     on its previous, darker ground. */
+  --color-ink-200: #dadde7;
 
-  --color-brand-50: #eef4ff;
-  --color-brand-100: #dbe6fe;
-  --color-brand-200: #bfd3fe;
-  --color-brand-300: #93b4fd;
-  --color-brand-400: #608cfa;
-  --color-brand-500: #3b66f6;
-  --color-brand-600: #2547eb;
-  --color-brand-700: #1d36d8;
-  --color-brand-800: #1e2faf;
-  --color-brand-900: #1e2d8a;
+  /* ── Ink. 300 is the kit's --ink-faint (3.2:1): decoration and disabled
+        states, never a word you have to read. 500 is --ink-3, the tier the
+        kit calls the one that decides whether a light site is readable.
 
-  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        400 sits between them and is deliberately close to 500. There is very
+        little room: the app sets faint text on the good/warn/bad/brand tints
+        as well as on the page ground, and the darkest of those (#FBECEB)
+        leaves nothing below about #666D7F at the 4.5:1 body-text bar. A
+        fainter tier would look right on the page ground and fail inside every
+        callout, which is the trap the kit warns about. ─────────────────── */
+  --color-ink-300: #858ca0;
+  --color-ink-400: #646b7c;
+  --color-ink-500: #616978;
+  --color-ink-600: #4e5666;
+  --color-ink-700: #3d4453;
+  --color-ink-800: #262c39;
+  --color-ink-900: #0e1117;
+  --color-ink-950: #07090d;
+
+  /* ── Signal. Copper, carried over from the Capital kit. ─────────────── */
+  --color-brand-50: #fceee8;
+  --color-brand-100: #f9dccf;
+  --color-brand-200: #f3bda6;
+  --color-brand-300: #ea9a78;
+  --color-brand-400: #e2734b;
+  --color-brand-500: #d9542a;
+  --color-brand-600: #c2451c;
+  --color-brand-700: #b33f19;
+  --color-brand-800: #8f3213;
+  --color-brand-900: #74280f;
+
+  /* ── Spectrum. Teal is the kit's data-and-measurement half. It is the
+        only spectrum colour this console spends: it carries the "in progress"
+        status tone and the cool half of the draw wheel.
+
+        The kit's violet is deliberately absent. Violet means inference and
+        models there, and nothing in this app infers anything — it counts
+        payments and draws a verifiable random number. Defining it here just to
+        have the full set would spend a meaning the rest of the system relies
+        on being able to make.
+
+        --teal at 3.0:1 is a stroke and fill value and never a word; every
+        teal word uses --teal-deep. ──────────────────────────────────────── */
+  --color-teal-50: #e3f5f5;
+  --color-teal-200: #a9dedd;
+  --color-teal-400: #0fa3a3;
+  --color-teal-600: #0a7070;
+  --color-teal-700: #085a5a;
+  --color-teal-800: #064848;
+
+  /* ── Semantic. Distinct from the accent on purpose: a failing state must
+        never read as a highlight. ────────────────────────────────────── */
+  --color-good-50: #e7f4ef;
+  --color-good-200: #b9ddd0;
+  --color-good-600: #1f7a5e;
+  --color-good-700: #1f5e4e;
+  --color-good-800: #184a3d;
+  --color-good-900: #123a30;
+
+  --color-warn-50: #fbf1e0;
+  --color-warn-200: #ecd3a4;
+  /* The kit lists --warn #A86A12 at 4.6:1, but it measures 4.25:1 on #FAFAFC
+     and 4.43:1 on white — short of the 4.5 body-text bar either way. The kit
+     value is kept here for icons and UI, and caution TEXT uses the deeper
+     step below. */
+  --color-warn-600: #a86a12;
+  --color-warn-700: #8f5a0f;
+  --color-warn-800: #754a0d;
+  --color-warn-900: #5e3b0a;
+
+  --color-bad-50: #fbeceb;
+  --color-bad-200: #f0bdb6;
+  --color-bad-600: #b8402f;
+  --color-bad-700: #983325;
+  --color-bad-800: #7c2a1f;
+  --color-bad-900: #632119;
+
+  /* ── Type. One family, three roles. Emphasis is weight and color, never
+        italic: the italic in a geometric sans is a slant, and it shows. ── */
+  --font-sans: 'Manrope', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-brand: 'Manrope', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', Menlo, monospace;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
+
+  --tracking-display: -0.035em;
+  --tracking-head: -0.025em;
+  --tracking-label: 0.16em;
+  /* The kit drops the wordmark's tail below 900px. That is not one of
+     Tailwind's default breakpoints, so it is named here. */
+  --breakpoint-lockup: 56.25rem;
+  --tracking-column: 0.12em;
+
+  /* ── Motion. The kit ships two curves: this entrance/hover one, and an
+        in-out curve for loops and sweeps. Only the first is defined here,
+        because nothing in this console loops — the wheel's spin is eased in
+        JavaScript by easeOutQuint, not by CSS. The second is left out on the
+        same reasoning as violet: an unused token invites someone to reach for
+        it decoratively. ─────────────────────────────────────────────────── */
+  --ease-adjl: cubic-bezier(0.16, 1, 0.3, 1);
 }
+
 
 html {
   color-scheme: light;
 }
+
 
 body {
   margin: 0;

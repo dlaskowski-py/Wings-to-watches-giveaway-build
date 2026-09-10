@@ -369,15 +369,15 @@ export function DrawTab() {
               {winners.map((w) => (
                 <li
                   key={w.rank}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-emerald-50 px-4 py-3 ring-1 ring-emerald-200"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-good-50 px-4 py-3 ring-1 ring-good-200"
                 >
                   <div className="flex items-center gap-3">
-                    <Trophy className="size-5 text-emerald-600" aria-hidden />
+                    <Trophy className="size-5 text-good-600" aria-hidden />
                     <div>
-                      <p className="text-sm font-semibold text-emerald-900">
+                      <p className="text-sm font-semibold text-good-900">
                         #{w.rank} — {w.display_label}
                       </p>
-                      <p className="text-xs text-emerald-700">
+                      <p className="text-xs text-good-700">
                         held {pluralize(w.tickets, 'ticket')}
                         {w.status && w.status !== 'active' ? ` · ${w.status}` : ''}
                       </p>
@@ -406,7 +406,7 @@ export function DrawTab() {
 
             {alternates.length > 0 && (
               <div className="mt-4">
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-500">Alternates, in order</h3>
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-label text-ink-500">Alternates, in order</h3>
                 <ol className="space-y-1">
                   {alternates.map((a) => (
                     <li key={a.rank} className="flex items-center justify-between rounded-lg bg-ink-50 px-4 py-2 text-sm">
