@@ -167,52 +167,6 @@ export function BrandFooter({ className }: { className?: string }) {
 }
 
 /**
- * Tiled watermark.
- *
- * Renders as real rotated text rather than an SVG data URI so it uses the
- * brand font and stays crisp at any zoom. Inert and hidden from assistive tech.
- *
- * There was a second, heavier 'stream' strength for surfaces being screen
- * recorded, because streaming codecs discard low-contrast detail first. The
- * reveal no longer carries a watermark at all, so nothing calls for it — and
- * it was not free to keep: at 9% the tiles composite the page ground down to
- * about #E5E5E7, which drags the faint text tier to 4.24:1. At the 5% used
- * here the ground lands at #EEEEF1 and the faintest text still measures
- * 4.61:1, so every tier on this page stays above the body-text bar.
- */
-export function Watermark({ className }: { className?: string }) {
-  const phrase = `${BRAND.full}  \u00b7  ${BRAND.motto}  \u00b7  `
-  // Enough repeats to span the widest viewport at this rotation.
-  const line = phrase.repeat(8)
-
-  return (
-    <div
-      aria-hidden
-      className={clsx('pointer-events-none absolute inset-0 select-none overflow-hidden', className)}
-      style={{ opacity: 0.05 }}
-    >
-      <div className="absolute -inset-[35%] flex -rotate-[24deg] flex-col justify-around">
-        {Array.from({ length: 14 }, (_, i) => (
-          <div
-            key={i}
-            className="whitespace-nowrap font-brand font-semibold uppercase"
-            style={{
-              color: 'var(--color-ink-900)',
-              fontSize: '0.8rem',
-              letterSpacing: '0.28em',
-              // Offset alternate rows so the tiling does not read as columns.
-              transform: `translateX(${i % 2 === 0 ? '0' : '-6rem'})`,
-            }}
-          >
-            {line}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-/**
  * Persistent corner attribution.
  *
  * Full opacity and always on top — this is the mark that has to be legible in

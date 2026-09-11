@@ -348,7 +348,7 @@ export function DrawWheel({ entrants, results, drawingName, beaconRound, onClose
       <BrandStamp className="absolute bottom-16 right-6 z-20 hidden text-right md:block" />
 
       {/* Header: says plainly that the result already exists. */}
-      <header className="relative z-10 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-ink-200 bg-white/80 px-6 py-3 backdrop-blur-sm">
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-ink-200 bg-white/80 px-6 py-3 backdrop-blur-sm">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-ink-900">{drawingName}</p>
           <p className="text-xs text-ink-500">
@@ -378,7 +378,7 @@ export function DrawWheel({ entrants, results, drawingName, beaconRound, onClose
       {/* Sized to fit whatever the stream is running at: the wheel takes the
           space left over rather than a fixed height, so nothing important ends
           up below the fold on a 720p capture. */}
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6 py-4 sm:gap-4">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6 py-4 sm:gap-4">
         <p className="shrink-0 text-xs font-semibold uppercase tracking-label text-ink-500">
           {current.isAlternate
             ? `Alternate ${current.rank - results.filter((r) => !r.isAlternate).length}`
@@ -475,7 +475,7 @@ export function DrawWheel({ entrants, results, drawingName, beaconRound, onClose
         </div>
       </div>
 
-      <footer className="relative z-10 shrink-0 border-t border-ink-200 bg-white/80 px-6 py-2 text-center backdrop-blur-sm">
+      <footer className="shrink-0 border-t border-ink-200 bg-white/80 px-6 py-2 text-center backdrop-blur-sm">
         <span className="text-xs text-ink-400">
           Made by <Wordmark size="sm" className="align-baseline" />
           <span className="mx-2 text-ink-300">&middot;</span>

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { KeyRound } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { Button, Field, Input } from '../components/ui'
-import { BRAND, Watermark, Wordmark } from '../components/brand'
+import { BRAND, Wordmark } from '../components/brand'
 
 export function SignInPage() {
   const { signInWithPasscode } = useAuth()
@@ -23,9 +23,8 @@ export function SignInPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col">
-      <Watermark />
-      <div className="relative z-10 flex flex-1 items-center justify-center px-6 py-12">
+    <div className="flex min-h-screen flex-col">
+      <div className="flex flex-1 items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
           <div className="mb-8 text-center">
             <h1 className="text-xl font-semibold text-ink-900">Wings to Watches</h1>
@@ -68,7 +67,7 @@ export function SignInPage() {
 
 function BrandFooterSlim() {
   return (
-    <footer className="relative z-10 border-t border-ink-200 bg-white px-6 py-5">
+    <footer className="border-t border-ink-200 bg-white px-6 py-5">
       <div className="mx-auto max-w-sm text-center text-xs text-ink-500">
         Made by <Wordmark size="sm" className="align-baseline" />
         <p className="mt-0.5 text-ink-400">{BRAND.motto}</p>

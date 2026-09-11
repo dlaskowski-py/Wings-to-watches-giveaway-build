@@ -6,7 +6,7 @@ import { getDrawing, getReconciliation } from '../lib/db'
 import { DRAWING_STATUS_META, type Drawing, type Reconciliation } from '../lib/types'
 import { useAuth } from '../lib/auth'
 import { Badge, ErrorBlock, LoadingBlock } from '../components/ui'
-import { BrandFooter, Watermark, Wordmark } from '../components/brand'
+import { BrandFooter, Wordmark } from '../components/brand'
 import { formatCents } from '../lib/format'
 
 /* -------------------------------------------------------------------------- *
@@ -16,9 +16,8 @@ import { formatCents } from '../lib/format'
 export function AppShell({ children }: { children: ReactNode }) {
   const { signOut } = useAuth()
   return (
-    <div className="relative flex min-h-screen flex-col">
-      <Watermark />
-      <header className="relative z-10 border-b border-ink-200 bg-white">
+    <div className="flex min-h-screen flex-col">
+      <header className="border-b border-ink-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-3">
           <Link to="/" className="text-sm font-semibold text-ink-900">
             Wings to Watches <span className="font-normal text-ink-400">giveaway console</span>
@@ -35,8 +34,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
-      <main className="relative z-10 mx-auto w-full max-w-7xl flex-1 px-6 py-8">{children}</main>
-      <BrandFooter className="relative z-10 mt-16" />
+      <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-8">{children}</main>
+      <BrandFooter className="mt-16" />
     </div>
   )
 }
