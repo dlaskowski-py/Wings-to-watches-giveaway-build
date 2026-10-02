@@ -1,6 +1,7 @@
 import { BrowserRouter, Link, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { AuthProvider, CONSOLE_ACCOUNT_EMAIL, useAuth } from './lib/auth'
 import { LoadingBlock } from './components/ui'
+import { AcceptNotice } from './components/AcceptNotice'
 import { SignInPage } from './routes/SignIn'
 import { DrawingsPage } from './routes/Drawings'
 import { NewDrawingPage } from './routes/NewDrawing'
@@ -44,7 +45,12 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
     )
   }
 
-  return <>{children}</>
+  return (
+    <>
+      <AcceptNotice />
+      {children}
+    </>
+  )
 }
 
 /** Old bookmarks may point at /drawings/:id; keep them working. */

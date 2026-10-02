@@ -123,23 +123,76 @@ export interface ExtractedPayer {
   pattern: string
 }
 
+/**
+ * Where a payer name ends inside a bank description.
+ *
+ * Shared by every pattern below so the four cannot drift apart — they had,
+ * and the two weakest ones were silently missing half the stop words.
+ *
+ * FOR is here because a Zelle memo arrives as "... from JOHN SMITH for Q3
+ * raffle Conf# abc". Without it the capture tries to swallow the memo, and
+ * because the name character class excludes digits, a memo like "for Q3
+ * raffle" makes the whole pattern fail and the payer comes back empty.
+ *
+ * Every word carries its own \b. Without that, " FORD" matches "\s+FOR" and
+ * "ANNA FORD" is truncated to "ANNA" — Ford, Forster and Fortuna are real
+ * surnames, and a truncated one silently becomes a separate entrant holding
+ * its own tickets.
+ */
+const NAME_END = String.raw`(?=\s+(?:(?:FOR|ON|REF|REFERENCE|CONF|CONFIRMATION|ID|TRN|TRACE)\b|#|\d{4,})|[;,]|$)`
+
+/** A payer name: a letter, then letters and the punctuation names really use. */
+const NAME_BODY = String.raw`([A-Za-z][A-Za-z'. -]{1,60}?)`
+
 const DESCRIPTION_PATTERNS: Array<{ id: string; re: RegExp; direction: 'from' | 'to' | null }> = [
   // "ORIG CO NAME:ZELLE ... IND NAME:JOHN SMITH" (NACHA descriptor)
   { id: 'nacha_ind_name', re: /IND\s*NAME\s*:\s*([A-Za-z][A-Za-z'. -]{1,60})/i, direction: 'from' },
-  // "Zelle payment from JOHN SMITH 22001234567" / "ZELLE FROM JOHN SMITH ON 09/05"
-  { id: 'zelle_from', re: /ZELLE[^A-Za-z]{0,20}(?:PAYMENT|TRANSFER|CREDIT|INSTANT\s*PMT)?[^A-Za-z]{0,20}FROM\s+([A-Za-z][A-Za-z'. -]{1,60}?)(?=\s+(?:ON|REF|CONF|CONFIRMATION|#|\d{4,})|$)/i, direction: 'from' },
+  // "Zelle payment from JOHN SMITH Conf# a1b2c3" — Bank of America's shape,
+  // and "ZELLE FROM JOHN SMITH ON 09/05".
+  {
+    id: 'zelle_from',
+    re: new RegExp(
+      String.raw`ZELLE[^A-Za-z]{0,20}(?:PAYMENT|TRANSFER|CREDIT|INSTANT\s*PMT)?[^A-Za-z]{0,20}FROM\s+` +
+        NAME_BODY + NAME_END,
+      'i',
+    ),
+    direction: 'from',
+  },
   // "Zelle payment to JANE DOE"
-  { id: 'zelle_to', re: /ZELLE[^A-Za-z]{0,20}(?:PAYMENT|TRANSFER|DEBIT)?[^A-Za-z]{0,20}TO\s+([A-Za-z][A-Za-z'. -]{1,60}?)(?=\s+(?:ON|REF|CONF|CONFIRMATION|#|\d{4,})|$)/i, direction: 'to' },
+  {
+    id: 'zelle_to',
+    re: new RegExp(
+      String.raw`ZELLE[^A-Za-z]{0,20}(?:PAYMENT|TRANSFER|DEBIT)?[^A-Za-z]{0,20}TO\s+` +
+        NAME_BODY + NAME_END,
+      'i',
+    ),
+    direction: 'to',
+  },
   // "RECEIVED FROM JOHN SMITH"
-  { id: 'received_from', re: /RECEIVED\s+FROM\s+([A-Za-z][A-Za-z'. -]{1,60}?)(?=\s+(?:ON|REF|CONF|#|\d{4,})|$)/i, direction: 'from' },
-  // Generic "FROM JOHN SMITH" as a last resort.
-  { id: 'generic_from', re: /\bFROM\s+([A-Za-z][A-Za-z'. -]{1,60}?)(?=\s+(?:ON|REF|CONF|#|\d{4,})|$)/i, direction: 'from' },
+  {
+    id: 'received_from',
+    re: new RegExp(String.raw`RECEIVED\s+FROM\s+` + NAME_BODY + NAME_END, 'i'),
+    direction: 'from',
+  },
+  // Generic "FROM JOHN SMITH" as a last resort. Catches Bank of America's
+  // "Online Banking transfer from CHEN DAVID Conf# 909090".
+  {
+    id: 'generic_from',
+    re: new RegExp(String.raw`\bFROM\s+` + NAME_BODY + NAME_END, 'i'),
+    direction: 'from',
+  },
 ]
 
-/** Trailing noise banks append after the name. */
+/**
+ * Trailing noise banks append after the name.
+ *
+ * FOR is in the stop set because a Zelle memo arrives as "... from JOHN SMITH
+ * for Q3 raffle Conf# abc". It is safe against real names: the test is
+ * word-bounded, so Ford, Forster and Fortuna are untouched.
+ */
 function cleanExtractedName(raw: string): string {
   return raw
-    .replace(/\b(?:ON|REF|REFERENCE|CONF|CONFIRMATION|ID|TRN|TRACE)\b.*$/i, '')
+    .replace(/\b(?:FOR|ON|REF|REFERENCE|CONF|CONFIRMATION|ID|TRN|TRACE)\b.*$/i, '')
     .replace(/[#*]+.*$/, '')
     .replace(/\s*\d[\d\s-]*$/, '') // trailing reference digits
     .replace(/\s+/g, ' ')
