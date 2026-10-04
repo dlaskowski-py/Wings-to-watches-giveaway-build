@@ -82,6 +82,7 @@ export const PAYMENT_FLAGS = {
   assumed_century: 'Two-digit year; century was assumed',
   failed_status: 'Source marked this transaction as failed, pending or canceled',
   formula_sanitized: 'A cell began with a spreadsheet formula character and was neutralized',
+  from_pdf: 'Read from a PDF by position rather than from real columns; check it against the statement',
 } as const
 
 export type PaymentFlag = keyof typeof PAYMENT_FLAGS

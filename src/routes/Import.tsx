@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Papa from 'papaparse'
+import { readTabularFile, type SourceFileKind } from '../lib/csv/readers'
 import { AlertTriangle, ArrowRight, CheckCircle2, Upload } from 'lucide-react'
 import { useDrawing } from './DrawingLayout'
 import { detectLayout, headerSignature, type Grid } from '../lib/csv/detect'
@@ -34,6 +34,9 @@ export function ImportTab() {
   const [fileHash, setFileHash] = useState('')
   const [grid, setGrid] = useState<Grid>([])
   const [mapping, setMapping] = useState<ColumnMapping | null>(null)
+  const [fileKind, setFileKind] = useState<SourceFileKind>('csv')
+  const [readNotes, setReadNotes] = useState<string[]>([])
+  const [pdfTxLines, setPdfTxLines] = useState<number | null>(null)
   const [confidence, setConfidence] = useState(0)
   const [preview, setPreview] = useState<ImportPreview | null>(null)
   const [duplicateCount, setDuplicateCount] = useState(0)
@@ -53,55 +56,23 @@ export function ImportTab() {
 
   /* ---------------------------------------------------------------- upload */
 
-/**
- * Stop an Excel workbook before it is parsed as text.
- *
- * The file picker asks for .csv, but "All files" is one click away and an
- * .xlsx sitting next to the export is an easy mis-click. It does not fail
- * loudly on its own: a workbook is a zip, decoding it as UTF-8 yields one long
- * line of mojibake, and the parser happily returns that as a single row — so
- * the operator lands in the column mapper looking at binary and no error at
- * all. Checked by magic bytes rather than by file extension, because the
- * extension is the part a person renames.
- */
-async function rejectSpreadsheetBinary(file: File): Promise<void> {
-  const head = new Uint8Array(await file.slice(0, 8).arrayBuffer())
-  const starts = (...bytes: number[]) => bytes.every((b, i) => head[i] === b)
-
-  // "PK\x03\x04" — a zip, which is what .xlsx and .xlsm are.
-  if (starts(0x50, 0x4b, 0x03, 0x04)) {
-    throw new Error(
-      'That is an Excel workbook, not a CSV. Open it in Excel and use ' +
-        'File > Save As > CSV UTF-8, then upload the .csv it writes.',
-    )
-  }
-  // OLE2 compound file — the older .xls format.
-  if (starts(0xd0, 0xcf, 0x11, 0xe0)) {
-    throw new Error(
-      'That is an older .xls workbook, not a CSV. Open it in Excel and use ' +
-        'File > Save As > CSV UTF-8, then upload the .csv it writes.',
-    )
-  }
-}
-
   const handleFile = useCallback(
     async (file: File) => {
       setError(null)
       setBusy(true)
       try {
-        await rejectSpreadsheetBinary(file)
-
-        const text = await file.text()
-        if (text.trim() === '') throw new Error('That file is empty.')
-
-        const parsed = Papa.parse<string[]>(text, { skipEmptyLines: false })
-        const rows = (parsed.data ?? []) as Grid
-        if (rows.length === 0) throw new Error('Could not read any rows from that file.')
+        const { grid: rows, kind, notes, likelyTransactionLines } = await readTabularFile(file)
 
         const detection = detectLayout(rows)
         setFileName(file.name)
         setFileSize(file.size)
-        setFileHash(await sha256Hex(text))
+        // The hash covers the bytes the operator actually uploaded, so an
+        // Excel or PDF import is traceable to its original file rather than to
+        // whatever grid was derived from it.
+        setFileHash(await sha256Hex(new Uint8Array(await file.arrayBuffer())))
+        setFileKind(kind)
+        setReadNotes(notes)
+        setPdfTxLines(likelyTransactionLines ?? null)
         setGrid(rows)
         setMapping(detection.mapping)
         setConfidence(detection.confidence)
@@ -127,6 +98,7 @@ async function rejectSpreadsheetBinary(file: File): Promise<void> {
         ticketPriceCents: drawing.ticket_price_cents,
         windowStart: drawing.window_start,
         windowEnd: drawing.window_end,
+        sourceFileKind: fileKind,
       })
       const existing = await existingDedupeHashes(drawing.id)
       const marked = markDuplicates(result.rows, existing)
@@ -137,7 +109,11 @@ async function rejectSpreadsheetBinary(file: File): Promise<void> {
     } finally {
       setBusy(false)
     }
-  }, [mapping, headers, dataRows, drawing])
+    // fileKind belongs here: without it this closure keeps the value from the
+    // first render ('csv') and a PDF import silently loses its from_pdf flag.
+    // It only appeared to work because `mapping` changes when a file loads and
+    // happened to rebuild the callback alongside it.
+  }, [mapping, headers, dataRows, drawing, fileKind])
 
   /* -------------------------------------------------------------- commit */
 
@@ -322,8 +298,8 @@ async function rejectSpreadsheetBinary(file: File): Promise<void> {
   return (
     <div className="space-y-6">
       <Card
-        title="1. Upload a CSV"
-        description="Venmo's statement export, or a Zelle/checking export from your bank. Any layout works — you confirm the columns next."
+        title="1. Upload a statement"
+        description="CSV, Excel or PDF. Venmo's export, a Zelle or checking export from your bank, or your own spreadsheet. Any layout works — you confirm the columns next."
       >
         <div
           onDragOver={(e) => e.preventDefault()}
@@ -336,13 +312,13 @@ async function rejectSpreadsheetBinary(file: File): Promise<void> {
         >
           <Upload className="mx-auto size-6 text-ink-300" aria-hidden />
           <p className="mt-3 text-sm font-medium text-ink-800">
-            {fileName || 'Drop a CSV here, or choose a file'}
+            {fileName || 'Drop a CSV, Excel or PDF here, or choose a file'}
           </p>
           <p className="mt-1 text-xs text-ink-500">Nothing is saved until you confirm the summary below.</p>
           <input
             ref={fileInput}
             type="file"
-            accept=".csv,text/csv,text/plain"
+            accept=".csv,.xlsx,.xls,.pdf,text/csv,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0]
@@ -422,6 +398,28 @@ async function rejectSpreadsheetBinary(file: File): Promise<void> {
                 </Select>
               </Field>
             </div>
+
+            {pdfTxLines !== null && preview !== null && preview.rows.length < pdfTxLines && (
+              <Callout tone="bad" title="Some lines did not survive the column guess">
+                This PDF has {pdfTxLines} lines that look like transactions — a date and an
+                amount together — but only {preview.rows.length} became payments. A PDF has no real
+                columns, so a row whose layout differs from the rest can be split wrongly and
+                dropped. Compare the preview against the statement before importing, or use your
+                bank’s CSV export, which does not have this problem.
+              </Callout>
+            )}
+
+            {readNotes.length > 0 && (
+              <Callout tone={fileKind === 'pdf' ? 'warn' : 'info'} title={
+                fileKind === 'pdf' ? 'Read from a PDF' : 'Read from a workbook'
+              }>
+                <ul className="list-disc space-y-1 pl-4">
+                  {readNotes.map((note) => (
+                    <li key={note}>{note}</li>
+                  ))}
+                </ul>
+              </Callout>
+            )}
 
             <div>
               <h3 className="mb-2 text-sm font-medium text-ink-800">Column roles</h3>

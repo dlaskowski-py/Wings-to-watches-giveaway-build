@@ -39,6 +39,12 @@ export interface NormalizeOptions {
   ticketPriceCents: number
   windowStart?: string | null
   windowEnd?: string | null
+  /**
+   * How the grid was obtained. A PDF has no columns of its own — they are
+   * inferred from where the glyphs sit — so every row off one is flagged for
+   * the operator to check, however confident the layout detection looked.
+   */
+  sourceFileKind?: 'csv' | 'excel' | 'pdf'
 }
 
 function cell(row: readonly string[], index: number | undefined): string {
@@ -204,7 +210,7 @@ export async function normalizeRows(
   dataRows: Grid,
   options: NormalizeOptions,
 ): Promise<ImportPreview> {
-  const { mapping, ticketPriceCents, windowStart = null, windowEnd = null } = options
+  const { mapping, ticketPriceCents, windowStart = null, windowEnd = null, sourceFileKind = 'csv' } = options
 
   const rows: NormalizedPayment[] = []
   const rejected: ImportPreview['rejected'] = []
@@ -226,6 +232,7 @@ export async function normalizeRows(
     if (row.every((c) => (c ?? '').trim() === '')) continue // blank line
 
     const flags: PaymentFlag[] = []
+    if (sourceFileKind === 'pdf') flags.push('from_pdf')
     const amount = readAmount(row, mapping)
 
     if (amount.error && amount.cents === 0) {
