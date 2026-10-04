@@ -53,11 +53,44 @@ export function ImportTab() {
 
   /* ---------------------------------------------------------------- upload */
 
+/**
+ * Stop an Excel workbook before it is parsed as text.
+ *
+ * The file picker asks for .csv, but "All files" is one click away and an
+ * .xlsx sitting next to the export is an easy mis-click. It does not fail
+ * loudly on its own: a workbook is a zip, decoding it as UTF-8 yields one long
+ * line of mojibake, and the parser happily returns that as a single row — so
+ * the operator lands in the column mapper looking at binary and no error at
+ * all. Checked by magic bytes rather than by file extension, because the
+ * extension is the part a person renames.
+ */
+async function rejectSpreadsheetBinary(file: File): Promise<void> {
+  const head = new Uint8Array(await file.slice(0, 8).arrayBuffer())
+  const starts = (...bytes: number[]) => bytes.every((b, i) => head[i] === b)
+
+  // "PK\x03\x04" — a zip, which is what .xlsx and .xlsm are.
+  if (starts(0x50, 0x4b, 0x03, 0x04)) {
+    throw new Error(
+      'That is an Excel workbook, not a CSV. Open it in Excel and use ' +
+        'File > Save As > CSV UTF-8, then upload the .csv it writes.',
+    )
+  }
+  // OLE2 compound file — the older .xls format.
+  if (starts(0xd0, 0xcf, 0x11, 0xe0)) {
+    throw new Error(
+      'That is an older .xls workbook, not a CSV. Open it in Excel and use ' +
+        'File > Save As > CSV UTF-8, then upload the .csv it writes.',
+    )
+  }
+}
+
   const handleFile = useCallback(
     async (file: File) => {
       setError(null)
       setBusy(true)
       try {
+        await rejectSpreadsheetBinary(file)
+
         const text = await file.text()
         if (text.trim() === '') throw new Error('That file is empty.')
 
